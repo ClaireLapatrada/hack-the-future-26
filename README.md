@@ -86,9 +86,8 @@ htf26/
 
 ## Our team
 
-- **1** — role
-- **2** — role
-- **3** — role
-- **4** — role
-- **5** — role
-- **6** — role
+- **1. Vicky Ongpipatanakul** — role
+- **2. Punnawit Payapvattanavong** — role
+- **3. Prima Limsuntrakul** — role
+- **4. Lapatrada Jaroonjetjumnong** — role
+- **5. Pera Kasemsripitak** — role
