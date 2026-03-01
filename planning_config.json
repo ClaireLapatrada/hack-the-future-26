@@ -1,0 +1,141 @@
+{
+  "scenario_definitions": {
+    "airfreight": {
+      "name": "Emergency Airfreight",
+      "description": "Redirect in-transit or new order via air cargo to bypass sea lane disruption.",
+      "lead_time_reduction_days": 14,
+      "unit_cost_premium_pct": 320,
+      "base_unit_cost_usd": 12.50,
+      "fixed_cost_usd": 15000,
+      "service_level_protection": "High",
+      "implementation_days": 2,
+      "risks": ["Airfreight capacity constraints in peak season", "Cargo size limits"],
+      "co2_impact": "High"
+    },
+    "alternate_supplier": {
+      "name": "Alternate Supplier Activation",
+      "description": "Qualify and onboard a backup semiconductor supplier (e.g., South Korea or EU).",
+      "lead_time_reduction_days": -5,
+      "unit_cost_premium_pct": 18,
+      "base_unit_cost_usd": 12.50,
+      "fixed_cost_usd": 45000,
+      "service_level_protection": "Medium",
+      "implementation_days": 21,
+      "risks": ["Qualification time", "Quality variance", "MOQ requirements"],
+      "co2_impact": "Low"
+    },
+    "buffer_build": {
+      "name": "Pre-emptive Buffer Stock Build",
+      "description": "Immediately increase safety stock to 60 days by pulling forward orders.",
+      "lead_time_reduction_days": 0,
+      "unit_cost_premium_pct": 8,
+      "base_unit_cost_usd": 12.50,
+      "fixed_cost_usd": 5000,
+      "service_level_protection": "High",
+      "implementation_days": 1,
+      "risks": ["Capital tied up in inventory", "Storage capacity limits", "Obsolescence risk"],
+      "co2_impact": "Low"
+    },
+    "spot_market": {
+      "name": "Spot Market Purchase",
+      "description": "Source required components from authorized spot/grey market distributors.",
+      "lead_time_reduction_days": 7,
+      "unit_cost_premium_pct": 45,
+      "base_unit_cost_usd": 12.50,
+      "fixed_cost_usd": 8000,
+      "service_level_protection": "Medium",
+      "implementation_days": 5,
+      "risks": ["Counterfeit risk", "Quality assurance required", "Price volatility"],
+      "co2_impact": "Medium"
+    },
+    "demand_deferral": {
+      "name": "Customer Demand Deferral",
+      "description": "Negotiate delivery timeline extension with customers to absorb delay.",
+      "lead_time_reduction_days": 0,
+      "unit_cost_premium_pct": 0,
+      "base_unit_cost_usd": 0,
+      "fixed_cost_usd": 0,
+      "service_level_protection": "Low",
+      "implementation_days": 3,
+      "risks": ["Customer relationship damage", "SLA penalty exposure", "Churn risk"],
+      "co2_impact": "None"
+    }
+  },
+  "alternative_suppliers": {
+    "Semiconductors": [
+      {
+        "name": "ChipWorks Korea",
+        "country": "South Korea",
+        "region": "East Asia",
+        "lead_time_days": 38,
+        "estimated_unit_cost_premium_pct": 12,
+        "qualification_weeks": 8,
+        "moq": 10000,
+        "certifications": ["ISO 9001", "IATF 16949"],
+        "contact": "procurement@chipworks.kr"
+      },
+      {
+        "name": "EuroSemi GmbH",
+        "country": "Germany",
+        "region": "Europe",
+        "lead_time_days": 28,
+        "estimated_unit_cost_premium_pct": 35,
+        "qualification_weeks": 6,
+        "moq": 5000,
+        "certifications": ["ISO 9001", "IATF 16949", "AEC-Q100"],
+        "contact": "sales@eurosemi.de"
+      }
+    ],
+    "Plastic Injection Parts": [
+      {
+        "name": "MoldTech Thailand",
+        "country": "Thailand",
+        "region": "Southeast Asia",
+        "lead_time_days": 28,
+        "estimated_unit_cost_premium_pct": 8,
+        "qualification_weeks": 4,
+        "moq": 5000,
+        "certifications": ["ISO 9001", "ISO 14001"],
+        "contact": "sales@moldtech.th"
+      },
+      {
+        "name": "PlasticPro Czech Republic",
+        "country": "Czech Republic",
+        "region": "Europe",
+        "lead_time_days": 18,
+        "estimated_unit_cost_premium_pct": 22,
+        "qualification_weeks": 5,
+        "moq": 3000,
+        "certifications": ["ISO 9001", "IATF 16949"],
+        "contact": "info@plasticpro.cz"
+      }
+    ]
+  },
+  "airfreight_rates": {
+    "Taiwan|Germany": { "rate_per_kg": 8.50, "transit_days": 3 },
+    "Vietnam|Germany": { "rate_per_kg": 7.20, "transit_days": 4 },
+    "South Korea|Germany": { "rate_per_kg": 7.80, "transit_days": 3 },
+    "Germany|Germany": { "rate_per_kg": 1.20, "transit_days": 1 }
+  },
+  "airfreight_defaults": {
+    "default_rate_per_kg": 9.00,
+    "default_transit_days": 5,
+    "handling_fee_usd": 1500,
+    "customs_pct": 0.03
+  },
+  "risk_appetite_weights": {
+    "low": { "service": 0.6, "cost": 0.25, "speed": 0.15 },
+    "medium": { "service": 0.45, "cost": 0.35, "speed": 0.20 },
+    "high": { "service": 0.30, "cost": 0.45, "speed": 0.25 }
+  },
+  "service_level_scores": {
+    "High": 90,
+    "Medium": 60,
+    "Low": 30
+  },
+  "rank_service_scores": {
+    "High": 100,
+    "Medium": 60,
+    "Low": 20
+  }
+}

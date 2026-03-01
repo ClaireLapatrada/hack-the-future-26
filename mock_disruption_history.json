@@ -1,0 +1,189 @@
+[
+  {
+    "event_id": "EVT-2024-011",
+    "date": "2024-11-03",
+    "type": "Shipping Disruption",
+    "region": "Red Sea / Suez Canal",
+    "severity": "High",
+    "affected_suppliers": [
+      "SUP-001",
+      "SUP-003"
+    ],
+    "description": "Houthi attacks on commercial vessels caused major rerouting via Cape of Good Hope.",
+    "impact": {
+      "delay_days": 18,
+      "revenue_at_risk_usd": 1728000,
+      "actual_revenue_lost_usd": 432000
+    },
+    "mitigation_taken": {
+      "action": "Emergency airfreight for semiconductors + expedited partial order from spot market",
+      "cost_usd": 185000,
+      "outcome": "Partial \u2014 BMW SLA maintained, VW delayed 4 days"
+    },
+    "lessons_learned": "Pre-position 45-day buffer for SEMI-MCU-32 before Q4. Airfreight contract needed."
+  },
+  {
+    "event_id": "EVT-2024-007",
+    "date": "2024-08-14",
+    "type": "Supplier Financial Risk",
+    "region": "Vietnam",
+    "severity": "Medium",
+    "affected_suppliers": [
+      "SUP-003"
+    ],
+    "description": "PlastiMold Vietnam reported cash flow issues; delayed 2 shipments without notice.",
+    "impact": {
+      "delay_days": 9,
+      "revenue_at_risk_usd": 864000,
+      "actual_revenue_lost_usd": 0
+    },
+    "mitigation_taken": {
+      "action": "Emergency order from secondary supplier MoldTech Thailand",
+      "cost_usd": 28000,
+      "outcome": "Success \u2014 no SLA breach"
+    },
+    "lessons_learned": "Qualify backup supplier in Thailand. Monitor SUP-003 health score monthly."
+  },
+  {
+    "event_id": "EVT-2023-019",
+    "date": "2023-12-01",
+    "type": "Geopolitical",
+    "region": "Taiwan Strait",
+    "severity": "Medium",
+    "affected_suppliers": [
+      "SUP-001"
+    ],
+    "description": "Heightened military tensions led to export uncertainty for Taiwan semiconductors.",
+    "impact": {
+      "delay_days": 0,
+      "revenue_at_risk_usd": 3500000,
+      "actual_revenue_lost_usd": 0
+    },
+    "mitigation_taken": {
+      "action": "Pre-emptive buffer build \u2014 60-day stock of SEMI-MCU-32 acquired",
+      "cost_usd": 312000,
+      "outcome": "Success \u2014 no disruption materialized but buffer provided insurance"
+    },
+    "lessons_learned": "Taiwan geopolitical signals should trigger immediate buffer build given single-source dependency."
+  },
+  {
+    "event_id": "EVT-2026-0228-004",
+    "date": "2026-02-28",
+    "type": "Shipping Lane Disruption",
+    "region": "Asia-Europe (Suez)",
+    "severity": "CRITICAL",
+    "affected_suppliers": [
+      "SUP-001"
+    ],
+    "description": "Suez Canal shipping lane disruption (+16 day delay) combined with low inventory (12 days) for critical single-source component SEMI-MCU-32 from SemiTech Asia in Taiwan.",
+    "impact": {
+      "delay_days": null,
+      "revenue_at_risk_usd": null,
+      "actual_revenue_lost_usd": null
+    },
+    "mitigation_taken": {
+      "action": "Emergency Airfreight",
+      "cost_usd": 79000,
+      "outcome": "Pending"
+    },
+    "lessons_learned": "To be determined based on outcome.",
+    "logged_by": "Supply Chain Resilience Agent",
+    "logged_at": "2026-02-28T11:25:27.233991"
+  },
+  {
+    "event_id": "EVT-2026-0228-005",
+    "date": "2026-02-28",
+    "type": "Shipping Disruption",
+    "region": "Asia-Europe (Suez)",
+    "severity": "CRITICAL",
+    "affected_suppliers": [
+      "SUP-001"
+    ],
+    "description": "Suez Canal blockage causing 16-day average delay, impacting critical component SEMI-MCU-32 with only 12 days of inventory on hand.",
+    "impact": {
+      "delay_days": null,
+      "revenue_at_risk_usd": null,
+      "actual_revenue_lost_usd": null
+    },
+    "mitigation_taken": {
+      "action": "Recommended Emergency Airfreight for 6,400 units.",
+      "cost_usd": 271000,
+      "outcome": "Pending"
+    },
+    "lessons_learned": "To be determined based on outcome.",
+    "logged_by": "Supply Chain Resilience Agent",
+    "logged_at": "2026-02-28T14:26:29.440656"
+  },
+  {
+    "event_id": "EVT-2026-0228-79F3A3",
+    "date": "2026-02-28",
+    "type": "Shipping Disruption",
+    "region": "Asia-Europe (Suez)",
+    "severity": "High",
+    "affected_suppliers": [
+      "SUP-001"
+    ],
+    "description": "Quick test inject",
+    "impact": {
+      "delay_days": null,
+      "revenue_at_risk_usd": null,
+      "actual_revenue_lost_usd": null
+    },
+    "mitigation_taken": {
+      "action": "Pending",
+      "cost_usd": null,
+      "outcome": "Pending"
+    },
+    "lessons_learned": "To be determined based on outcome.",
+    "logged_by": "initiate_event.py",
+    "logged_at": "2026-02-28T14:45:33.464326"
+  },
+  {
+    "event_id": "EVT-2026-0228-007",
+    "date": "2026-02-28",
+    "type": "Shipping Disruption",
+    "region": "Red Sea",
+    "severity": "CRITICAL",
+    "affected_suppliers": [
+      "SUP-001"
+    ],
+    "description": "Red Sea shipping disruption causing 16-day delay for critical SEMI-MCU-32 from single-source supplier SemiTech Asia. Inventory 12 days. Total financial exposure $1,832,000.",
+    "impact": {
+      "delay_days": null,
+      "revenue_at_risk_usd": null,
+      "actual_revenue_lost_usd": null
+    },
+    "mitigation_taken": {
+      "action": "Emergency Airfreight (1600 units SEMI-MCU-32) and alternative supplier qualification initiated.",
+      "cost_usd": 79000,
+      "outcome": "Pending"
+    },
+    "lessons_learned": "To be determined based on outcome.",
+    "logged_by": "Supply Chain Resilience Agent",
+    "logged_at": "2026-02-28T14:54:14.640038"
+  },
+  {
+    "event_id": "EVT-2026-0228-008",
+    "date": "2026-02-28",
+    "type": "Shipping Disruption",
+    "region": "Red Sea / Asia-Europe (Suez)",
+    "severity": "CRITICAL",
+    "affected_suppliers": [
+      "SUP-001"
+    ],
+    "description": "Red Sea shipping lane DISRUPTED, causing 16-day delay for critical SEMI-MCU-32. Inventory runway is 12 days, leading to a 4-day production gap.",
+    "impact": {
+      "delay_days": null,
+      "revenue_at_risk_usd": null,
+      "actual_revenue_lost_usd": null
+    },
+    "mitigation_taken": {
+      "action": "Emergency Airfreight for 1600 units of SEMI-MCU-32.",
+      "cost_usd": 79000,
+      "outcome": "Pending"
+    },
+    "lessons_learned": "To be determined based on outcome.",
+    "logged_by": "Supply Chain Resilience Agent",
+    "logged_at": "2026-02-28T15:11:12.677192"
+  }
+]

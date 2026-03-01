@@ -1,0 +1,13 @@
+{
+  "inventory": [
+    {"item_id": "SEMI-MCU-32", "description": "MCU 32-bit", "supplier_id": "SUP-001", "days_on_hand": 12, "daily_consumption": 400, "stock_units": 4800, "on_order_units": 2000, "expected_delivery_date": "2025-03-15"},
+    {"item_id": "SEMI-SENSOR-01", "description": "Sensor module", "supplier_id": "SUP-001", "days_on_hand": 8, "daily_consumption": 200, "stock_units": 1600, "on_order_units": 0, "expected_delivery_date": null},
+    {"item_id": "STEEL-BRK-07", "description": "Brake disc steel", "supplier_id": "SUP-002", "days_on_hand": 25, "daily_consumption": 500, "stock_units": 12500, "on_order_units": 5000, "expected_delivery_date": "2025-03-01"},
+    {"item_id": "STEEL-FRAME-02", "description": "Frame component", "supplier_id": "SUP-002", "days_on_hand": 18, "daily_consumption": 100, "stock_units": 1800, "on_order_units": 0, "expected_delivery_date": null}
+  ],
+  "open_purchase_orders": [
+    {"po_id": "PO-1001", "supplier_id": "SUP-001", "value_usd": 120000, "delivery_date": "2025-03-15"},
+    {"po_id": "PO-1002", "supplier_id": "SUP-002", "value_usd": 85000, "delivery_date": "2025-03-01"},
+    {"po_id": "PO-1003", "supplier_id": "SUP-001", "value_usd": 45000, "delivery_date": "2025-04-01"}
+  ]
+}
