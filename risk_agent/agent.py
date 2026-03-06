@@ -57,7 +57,7 @@ Be quantitative. Give dollar figures. Give days. Be specific.
 """
 
 risk_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="risk_intelligence_agent",
     description=(
         "Translates disruption signals into precise operational and financial risk assessments. "

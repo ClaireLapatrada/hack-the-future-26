@@ -1,5 +1,16 @@
 {
-  "active": false,
-  "supplier_health_degraded": false,
-  "shipping_lanes": {}
+  "active": true,
+  "supplier_health_degraded": true,
+  "shipping_lanes": {
+    "Asia-Europe (Suez)": {
+      "status": "DISRUPTED",
+      "severity": "High",
+      "avg_delay_days": 16,
+      "reroute_available": true,
+      "reroute_via": "Cape of Good Hope",
+      "reroute_additional_days": 14,
+      "carrier_surcharges_usd_per_teu": 2800,
+      "vessels_affected_pct": 68
+    }
+  }
 }

@@ -11,7 +11,10 @@ The pipeline logic (Perception → Memory → Risk → Planning → Action) is
 enforced via the instruction prompt instead of agent delegation.
 """
 
+import os
 from google.adk.agents import Agent
+
+from tools.reasoning_log import with_reasoning_log
 
 # Perception
 from tools.perception_tools import (
@@ -40,6 +43,7 @@ from tools.action_tools import (
     send_slack_alert,
     flag_erp_reorder_adjustment,
     generate_executive_summary,
+    submit_mitigation_for_approval,
 )
 # Memory
 from tools.memory_tools import (
@@ -54,27 +58,38 @@ co-pilot for AutomotiveParts GmbH, a mid-market automotive parts manufacturer
 in Stuttgart, Germany.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MANUFACTURER PROFILE:
+MANUFACTURER PROFILE (context only — do NOT use for threat/lane status):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Company: AutomotiveParts GmbH | Revenue: $180M/year
-CRITICAL: SUP-001 SemiTech Asia (Taiwan) — 42% spend, SINGLE SOURCE
+Key supplier: SUP-001 SemiTech Asia (Taiwan) — 42% spend, single source for some parts
 Customers: BMW Group ($50K/day penalty), Volkswagen AG ($35K/day penalty)
 Risk appetite: LOW — service level protection is top priority
-Active risk: Asia-Europe (Suez) lane DISRUPTED
-Critical item: SEMI-MCU-32 — only 15.4 days stock remaining
+Critical item in profile: SEMI-MCU-32 (semiconductor) — assess actual runway via get_inventory_runway
+
+FIXED PARAMETERS (use these exact values — do not assume or substitute):
+- search_disruption_news query: "global supply chain disruptions"
+- Suppliers to check for health and exposure: SUP-001, SUP-003
+- Critical item ID for inventory runway and mitigation scenarios: SEMI-MCU-32
+
+RULE: Threat level and disruption status MUST come ONLY from tool results.
+- If get_shipping_lane_status returns OPERATIONAL for a lane, do NOT report that lane as DISRUPTED.
+- If search_disruption_news or get_climate_alerts return an error (e.g. 403, API not configured), proceed with the rest of the pipeline using shipping lane status and supplier health results; do not block the run on news or climate.
+- Do not state "Active risk: X lane DISRUPTED" unless a perception tool actually reported that lane as DISRUPTED.
+- Inventory runway and financial exposure: use get_inventory_runway and calculate_revenue_at_risk results, not profile text.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PIPELINE — run in this order:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 STEP 1 — PERCEIVE (always run first)
-  search_disruption_news("red sea shipping" or relevant query)
+  search_disruption_news("global supply chain disruptions")
   get_shipping_lane_status("Asia-Europe (Suez)")
   get_shipping_lane_status("Asia-Europe (Air)")
   get_shipping_lane_status("Intra-Europe (Road)")
   get_climate_alerts(["Taiwan", "Vietnam", "Poland", "Germany"])
   score_supplier_health("SUP-001")
   score_supplier_health("SUP-003")
+  If news or climate APIs return an error, continue with lane status and supplier health only.
 
 STEP 2 — MEMORY (before risk, get historical context)
   retrieve_similar_disruptions(disruption_type, affected_region)
@@ -94,6 +109,7 @@ STEP 4 — PLAN (only if HIGH or CRITICAL risk)
   get_airfreight_rate_estimate("Taiwan", "Germany", weight_kg)
   get_alternative_suppliers("Semiconductors")
   rank_scenarios(list_of_scenario_results, "low")
+  When you have a top mitigation that requires human sign-off (e.g. airfreight > $50K, ERP change, supplier email, or any recommended scenario), call submit_mitigation_for_approval(title, recommendation, situation, severity, context_summary, scenario_name, incremental_cost_usd) so it appears in the Approval Inbox for the user to accept or reject.
 
 STEP 5 — ACTION
   send_slack_alert("#supply-chain-alerts", severity, summary, action, exposure, True)
@@ -133,7 +149,7 @@ Reasoning: [2-3 sentences why this fits this manufacturer]
 """
 
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="supply_chain_orchestrator",
     description=(
         "Autonomous Supply Chain Resilience Agent for AutomotiveParts GmbH. "
@@ -143,28 +159,29 @@ root_agent = Agent(
     instruction=ORCHESTRATOR_INSTRUCTION,
     tools=[
         # Perception
-        search_disruption_news,
-        get_shipping_lane_status,
-        get_climate_alerts,
-        score_supplier_health,
+        with_reasoning_log(search_disruption_news),
+        with_reasoning_log(get_shipping_lane_status),
+        with_reasoning_log(get_climate_alerts),
+        with_reasoning_log(score_supplier_health),
         # Risk
-        calculate_revenue_at_risk,
-        get_inventory_runway,
-        calculate_sla_breach_probability,
-        get_supplier_exposure,
+        with_reasoning_log(calculate_revenue_at_risk),
+        with_reasoning_log(get_inventory_runway),
+        with_reasoning_log(calculate_sla_breach_probability),
+        with_reasoning_log(get_supplier_exposure),
         # Planning
-        simulate_mitigation_scenario,
-        get_alternative_suppliers,
-        get_airfreight_rate_estimate,
-        rank_scenarios,
+        with_reasoning_log(simulate_mitigation_scenario),
+        with_reasoning_log(get_alternative_suppliers),
+        with_reasoning_log(get_airfreight_rate_estimate),
+        with_reasoning_log(rank_scenarios),
         # Action
-        draft_supplier_email,
-        send_slack_alert,
-        flag_erp_reorder_adjustment,
-        generate_executive_summary,
+        with_reasoning_log(draft_supplier_email),
+        with_reasoning_log(send_slack_alert),
+        with_reasoning_log(flag_erp_reorder_adjustment),
+        with_reasoning_log(generate_executive_summary),
+        with_reasoning_log(submit_mitigation_for_approval),
         # Memory
-        retrieve_similar_disruptions,
-        log_disruption_event,
-        get_recurring_risk_patterns,
+        with_reasoning_log(retrieve_similar_disruptions),
+        with_reasoning_log(log_disruption_event),
+        with_reasoning_log(get_recurring_risk_patterns),
     ]
 )

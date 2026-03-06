@@ -1,15 +1,27 @@
 """
 Planning Tools — Scenario simulation and mitigation strategy generation.
 Used by the Scenario Planning Agent.
-Config and static data are loaded from planning_config.json (project root).
+
+By default, config and static data are loaded from planning_config.json
+in the project root. To plug in **real** planning parameters (rates,
+scenarios, weights) without changing code, set:
+
+- PLANNING_CONFIG_PATH: path to a JSON file with the same structure
+  as planning_config.json (absolute or relative).
 """
 
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 
 # Load config once at import (project root = parent of tools/)
-_CONFIG_PATH = Path(__file__).resolve().parent.parent / "planning_config.json"
+_ENV_CONFIG_PATH = os.getenv("PLANNING_CONFIG_PATH")
+_CONFIG_PATH = (
+    Path(_ENV_CONFIG_PATH)
+    if _ENV_CONFIG_PATH
+    else Path(__file__).resolve().parent.parent / "planning_config.json"
+)
 with open(_CONFIG_PATH, encoding="utf-8") as _f:
     _CONFIG = json.load(_f)
 
@@ -172,13 +184,16 @@ def rank_scenarios(scenarios_json: str, risk_appetite: str = "low") -> dict:
 
     ranked.sort(key=lambda x: x["adjusted_score"], reverse=True)
 
+    def _name(r: dict) -> str:
+        return r.get("scenario_name") or r.get("scenario_type") or "Unknown"
+
     return {
         "status": "success",
         "risk_appetite": risk_appetite,
         "ranked_scenarios": ranked,
-        "top_recommendation": ranked[0]["scenario_name"] if ranked else None,
+        "top_recommendation": _name(ranked[0]) if ranked else None,
         "reasoning": f"Based on '{risk_appetite}' risk appetite, "
                      f"service level protection is weighted at {w['service']*100:.0f}%. "
-                     f"'{ranked[0]['scenario_name']}' scores highest at {ranked[0]['adjusted_score']:.1f}/100."
+                     f"'{_name(ranked[0])}' scores highest at {ranked[0]['adjusted_score']:.1f}/100."
                      if ranked else "No scenarios to rank."
     }

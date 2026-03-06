@@ -70,7 +70,7 @@ Be direct with your recommendation. The operations team needs clarity, not hedgi
 """
 
 planning_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="scenario_planning_agent",
     description=(
         "Simulates mitigation strategies for detected supply chain risks. "

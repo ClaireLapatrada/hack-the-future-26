@@ -4,7 +4,7 @@ helloww!
 
 ## Overview
 
-- **Model:** Gemini 2.5 Flash.
+- **Model:** Gemini 2.5 Flash Lite (default; 10 requests/min free tier). Override with `GEMINI_MODEL`.
 
 ## Requirements
 
@@ -67,6 +67,23 @@ adk run my_agent
 ```bash
 python -c "from my_agent.agent import root_agent; print(root_agent.name)"
 ```
+
+### Agent Reasoning Stream (dashboard UI)
+
+The Next.js dashboard shows an **Agent Reasoning Stream** (OBSERVE, ACTION, RESULT, REASON, TOOL). The **orchestrator agent** fills this when it runs:
+
+- **Run one cycle** (writes to `ui/data/agent_reasoning_stream.json`):
+  ```bash
+  python scripts/initiate_event.py --run
+  ```
+- **Run continuous detection** (each cycle overwrites the log):
+  ```bash
+  python scripts/run_continuous_detection.py --interval 0
+  ```
+
+Then refresh the dashboard or Disruptions page; they read from `/api/agent-stream`, which serves that file. Tools are wrapped to log **TOOL** (call) and **RESULT** (summary); model text is logged as **REASON**, **OBSERVE**, or **ACTION**.
+
+**Rate limits (429):** Default model is `gemini-2.5-flash-lite` (10 requests/min free tier). Scripts retry up to 10 times on 429. Use `--interval 120` or higher. To space out tool calls and reduce burst load, set `TOOL_CALL_DELAY_SECONDS=2.5` (or 3) in `.env` or `orchestrator_agent/.env`. See [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
 
 ## Suggested features — implementation status
 
