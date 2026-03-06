@@ -34,7 +34,6 @@ export function Topbar({
         <div className="flex items-center gap-3">
           <LayoutIcon className="h-4 w-4 shrink-0 text-textMuted" />
           <div className="flex flex-col font-mono text-sm text-textPrimary leading-tight">
-            <span>Sun, Mar 1</span>
             <span>{dateStr}</span>
             <span className="text-xs text-textMuted">{timeStr}</span>
           </div>
