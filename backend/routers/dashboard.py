@@ -544,13 +544,12 @@ def get_dashboard(store: DataStore = Depends(get_data_store)) -> Dict[str, Any]:
 
     # Pending approvals count
     resolutions: Dict[str, str] = {}
-    for res_path in (settings.ui_data_dir / "approval_resolutions.json", settings.data_dir / "approval_resolutions.json"):
-        if res_path.exists():
-            try:
-                resolutions = json.loads(res_path.read_text(encoding="utf-8"))
-                break
-            except Exception:
-                pass
+    res_path = settings.approval_resolutions_path
+    if res_path.exists():
+        try:
+            resolutions = json.loads(res_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
 
     pending_from_mock = (
         sum(
@@ -561,18 +560,17 @@ def get_dashboard(store: DataStore = Depends(get_data_store)) -> Dict[str, Any]:
         if use_disruptions else 0
     )
     agent_pending = 0
-    for p_path in (settings.ui_data_dir / "pending_approvals.json", settings.data_dir / "pending_approvals.json"):
-        if p_path.exists():
-            try:
-                raw = json.loads(p_path.read_text(encoding="utf-8"))
-                if isinstance(raw, list):
-                    agent_pending = sum(
-                        1 for e in raw
-                        if e.get("status") == "pending" or e.get("status") is None
-                    )
-                break
-            except Exception:
-                pass
+    p_path = settings.pending_approvals_path
+    if p_path.exists():
+        try:
+            raw = json.loads(p_path.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                agent_pending = sum(
+                    1 for e in raw
+                    if e.get("status") == "pending" or e.get("status") is None
+                )
+        except Exception:
+            pass
     pending_count = pending_from_mock + agent_pending
 
     total_revenue_at_risk = (

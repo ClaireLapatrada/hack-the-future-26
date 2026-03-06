@@ -37,8 +37,7 @@ RANK_SERVICE_SCORES = _CONFIG.get("rank_service_scores", {"High": 100, "Medium":
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
-UI_DATA_DIR = Path(__file__).resolve().parent.parent / "ui" / "data"
-PLANNING_DOCUMENTS_PATH = UI_DATA_DIR / "planning_documents.json"
+PLANNING_DOCUMENTS_PATH = DATA_DIR / "planning_documents.json"
 
 
 def _load_profile() -> dict:

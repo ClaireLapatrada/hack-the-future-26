@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
-PENDING_APPROVALS_PATH = PROJECT_ROOT / "ui" / "data" / "pending_approvals.json"
-ESCALATIONS_PATH = PROJECT_ROOT / "ui" / "data" / "escalations.json"
+PENDING_APPROVALS_PATH = PROJECT_ROOT / "data" / "pending_approvals.json"
+ESCALATIONS_PATH = PROJECT_ROOT / "data" / "escalations.json"
 
 def _load_action_config() -> dict:
     path = Path(os.getenv("ACTION_CONFIG_PATH", CONFIG_DIR / "action_config.json"))

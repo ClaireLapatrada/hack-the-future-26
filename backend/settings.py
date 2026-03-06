@@ -105,19 +105,23 @@ class Settings(BaseSettings):
 
     @property
     def pending_approvals_path(self) -> Path:
-        return self.ui_data_dir / "pending_approvals.json"
+        return self.data_dir / "pending_approvals.json"
 
     @property
     def escalations_path(self) -> Path:
-        return self.ui_data_dir / "escalations.json"
+        return self.data_dir / "escalations.json"
 
     @property
     def planning_documents_path(self) -> Path:
-        return self.ui_data_dir / "planning_documents.json"
+        return self.data_dir / "planning_documents.json"
 
     @property
     def agent_stream_path(self) -> Path:
-        return self.ui_data_dir / "agent_reasoning_stream.json"
+        return self.data_dir / "agent_reasoning_stream.json"
+
+    @property
+    def approval_resolutions_path(self) -> Path:
+        return self.data_dir / "approval_resolutions.json"
 
     @property
     def rules_path(self) -> Path:

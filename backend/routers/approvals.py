@@ -97,9 +97,7 @@ def list_approvals(store: DataStore = Depends(get_data_store)) -> List[ApprovalI
 
     # 2. Mock disruption history — Pending outcome entries not yet resolved
     resolutions: Dict[str, str] = {}
-    res_path = settings.ui_data_dir / "approval_resolutions.json"
-    if not res_path.exists():
-        res_path = settings.data_dir / "approval_resolutions.json"
+    res_path = settings.approval_resolutions_path
     if res_path.exists():
         try:
             resolutions = json.loads(res_path.read_text(encoding="utf-8"))
@@ -185,9 +183,7 @@ def update_approval(
         return {"ok": True, "id": id_, "status": approvals[idx].status.value}
 
     if id_.startswith("EVT-"):
-        res_path = settings.ui_data_dir / "approval_resolutions.json"
-        if not res_path.exists():
-            res_path = settings.data_dir / "approval_resolutions.json"
+        res_path = settings.approval_resolutions_path
         resolutions: Dict[str, str] = {}
         if res_path.exists():
             try:

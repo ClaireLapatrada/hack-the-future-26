@@ -1,0 +1,318 @@
+[
+  {
+    "id": "APPR-20260305-200448",
+    "severity": "CRITICAL",
+    "title": "Urgent Mitigation: Pre-emptive Buffer Stock for SEMI-MCU-32",
+    "situation": "The Asia-Europe (Suez) shipping lane is currently DISRUPTED due to a high-severity incident. Single-source supplier SUP-001 (SemiTech Asia) is directly impacted, placing critical semiconductor supply (SEMI-MCU-32) at risk. Revenue at risk: $1,152,000; SLA penalties: $680,000.",
+    "recommendation": "APPROVE \u2014 Pre-emptive Buffer Stock Build of 6,400 units to secure supply runway. If shipping delays exceed 14 days, initiate secondary plan: Emergency Airfreight.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Disruption in Asia-Europe (Suez) lane threatens $1.8M in financial exposure. Current inventory for SEMI-MCU-32 is 12 days, well below the 30-day target buffer. Pre-emptive buffer build mitigates SLA breach risk for BMW and Volkswagen."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $11,400"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Pre-emptive Buffer Stock Build of 6,400 units to secure supply runway. If shipping delays exceed 14 days, initiate secondary plan: Emergency Airfreight."
+      }
+    ],
+    "status": "rejected",
+    "createdAt": "2026-03-05T20:04:48.822473"
+  },
+  {
+    "id": "APPR-20260305-200814",
+    "severity": "CRITICAL",
+    "title": "Emergency Mitigation: SEMI-MCU-32 Buffer Build",
+    "situation": "Asia-Europe (Suez) lane is DISRUPTED. Single-source supplier SUP-001 (SemiTech Asia) is at risk. $1.15M revenue and $680K SLA penalties at stake.",
+    "recommendation": "APPROVE \u2014 Pre-emptive Buffer Stock Build of 6,400 units. If disruptions persist beyond 14 days, secondary recommendation is to proceed with Emergency Airfreight.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Suez lane disruption threatens $1.83M in exposure. Inventory for SEMI-MCU-32 at 12 days (critical). Pre-emptive buffer build mitigates risk for major customers."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $11,400"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Pre-emptive Buffer Stock Build of 6,400 units. If disruptions persist beyond 14 days, secondary recommendation is to proceed with Emergency Airfreight."
+      }
+    ],
+    "status": "rejected",
+    "createdAt": "2026-03-05T20:08:14.210726"
+  },
+  {
+    "id": "APPR-20260305-205929",
+    "severity": "CRITICAL",
+    "title": "CRITICAL Mitigation: Buffer Build for SEMI-MCU-32",
+    "situation": "Asia-Europe (Suez) disruption causing potential 14-day production halt. Inventory runway for critical part SEMI-MCU-32 is 12 days. Total financial risk $1.28M.",
+    "recommendation": "APPROVE \u2014 Initiate 'Pre-emptive Buffer Stock Build' to secure 60-day stock of SEMI-MCU-32. ERP will be adjusted to pull forward current POs.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Asia-Europe (Suez) shipping is disrupted with 14+ day delays. SUP-001 (semiconductors) has 12 days inventory, critical to production of ECU modules. Risk of 100% SLA breach for BMW/VW ($1.28M exposure). Pre-emptive buffer build suggested as highest-ranked mitigation."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $10,600"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Initiate 'Pre-emptive Buffer Stock Build' to secure 60-day stock of SEMI-MCU-32. ERP will be adjusted to pull forward current POs."
+      }
+    ],
+    "status": "rejected",
+    "createdAt": "2026-03-05T20:59:29.298748"
+  },
+  {
+    "id": "APPR-20260305-210251",
+    "severity": "CRITICAL",
+    "title": "CRITICAL Mitigation: Buffer Build for SEMI-MCU-32",
+    "situation": "Asia-Europe (Suez) disruption causing potential 14-day production halt. Inventory runway for critical part SEMI-MCU-32 is 12 days. Total financial risk $1.28M.",
+    "recommendation": "APPROVE \u2014 Initiate 'Pre-emptive Buffer Stock Build' to secure 60-day stock of SEMI-MCU-32. ERP will be adjusted to pull forward current POs.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Asia-Europe (Suez) shipping is disrupted with 14+ day delays. SUP-001 (semiconductors) has 12 days inventory, critical to production of ECU modules. Risk of 100% SLA breach for BMW/VW ($1.28M exposure). Pre-emptive buffer build suggested as highest-ranked mitigation."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $10,600"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Initiate 'Pre-emptive Buffer Stock Build' to secure 60-day stock of SEMI-MCU-32. ERP will be adjusted to pull forward current POs."
+      }
+    ],
+    "status": "rejected",
+    "createdAt": "2026-03-05T21:02:51.762061"
+  },
+  {
+    "id": "APPR-20260305-210613",
+    "severity": "CRITICAL",
+    "title": "CRITICAL Mitigation: Buffer Build for SEMI-MCU-32",
+    "situation": "Asia-Europe (Suez) disruption causing potential 14-day production halt. Inventory runway for critical part SEMI-MCU-32 is 12 days. Total financial risk $1.28M.",
+    "recommendation": "APPROVE \u2014 Initiate 'Pre-emptive Buffer Stock Build' to secure 60-day stock of SEMI-MCU-32. ERP will be adjusted to pull forward current POs.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Asia-Europe (Suez) shipping is disrupted with 14+ day delays. SUP-001 (semiconductors) has 12 days inventory, critical to production of ECU modules. Risk of 100% SLA breach for BMW/VW ($1.28M exposure). Pre-emptive buffer build suggested as highest-ranked mitigation."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $10,600"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Initiate 'Pre-emptive Buffer Stock Build' to secure 60-day stock of SEMI-MCU-32. ERP will be adjusted to pull forward current POs."
+      }
+    ],
+    "status": "rejected",
+    "createdAt": "2026-03-05T21:06:13.709271"
+  },
+  {
+    "id": "APPR-20260306-015231",
+    "severity": "CRITICAL",
+    "title": "Emergency Inventory Buffer \u2014 SEMI-MCU-32",
+    "situation": "Suez Canal disruption is causing 16-day delays for shipments from Taiwan (SUP-001). SEMI-MCU-32 stock is critical.",
+    "recommendation": "APPROVE \u2014 Pre-emptive Buffer Stock Build for 6,400 units to reach 60-day safety stock level.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Inventory for SEMI-MCU-32 is at 12 days; 16-day disruption from SemiTech Asia puts $1.8M in revenue and SLA penalties at risk. Low risk appetite requires immediate buffer increase."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $11,400"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Pre-emptive Buffer Stock Build for 6,400 units to reach 60-day safety stock level."
+      }
+    ],
+    "status": "rejected",
+    "createdAt": "2026-03-06T01:52:31.389618"
+  },
+  {
+    "id": "APPR-20260306-021149",
+    "severity": "CRITICAL",
+    "title": "Emergency Airfreight \u2014 SEMI-MCU-32",
+    "situation": "SEMI-MCU-32 inventory depletion risk due to Suez disruption.",
+    "recommendation": "APPROVE \u2014 Emergency Airfreight for 6,400 units to bypass 16-day shipping disruption and prevent $1.36M in SLA penalties.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Asia-Europe (Suez) shipping lane is disrupted (16-day delay). Current inventory for SEMI-MCU-32 is 12 days, placing AutomotiveParts GmbH at high risk of 100% SLA breach for BMW ($800K penalty) and VW ($560K penalty). Total exposure: $1.83M. Emergency airfreight mitigates this breach."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Emergency Airfreight. $271,000"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Emergency Airfreight for 6,400 units to bypass 16-day shipping disruption and prevent $1.36M in SLA penalties."
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-03-06T02:11:49.118065"
+  },
+  {
+    "id": "APPR-20260306-021839",
+    "severity": "CRITICAL",
+    "title": "Emergency Airfreight \u2014 SEMI-MCU-32",
+    "situation": "High risk of stockout (12 days) and SLA penalties ($1.36M total for BMW/VW).",
+    "recommendation": "Approve Emergency Airfreight for 6,400 units (SEMI-MCU-32) to ensure service levels during Suez disruption.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "SUP-001 (Taiwan) shipping disruption (Suez 16-day delay) puts $1.83M total at risk. Inventory runway: 12 days. Current SLA breach probability: 100%. Emergency airfreight is the top recommendation to protect BMW/VW SLAs."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Emergency Airfreight. $271,000"
+      },
+      {
+        "time": "\u2014",
+        "text": "Approve Emergency Airfreight for 6,400 units (SEMI-MCU-32) to ensure service levels during Suez disruption."
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T02:18:39.208849"
+  },
+  {
+    "id": "APPR-20260306-024248",
+    "severity": "CRITICAL",
+    "title": "Emergency Mitigation: Pre-emptive Buffer Stock Build \u2014 SEMI-MCU-32",
+    "situation": "Critical inventory risk identified due to shipping lane disruption. Current runway: 12 days. Potential stockout by Day 12. Total exposure: $1.83M.",
+    "recommendation": "APPROVE \u2014 Immediately increase safety stock to 60 days by pulling forward orders for SEMI-MCU-32. This provides the highest service level protection at the lowest cost, aligning with AutomotiveParts GmbH's low risk appetite.",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "16-day disruption in Asia-Europe (Suez) lane threatens 12-day inventory runway of SEMI-MCU-32. Potential $1.15M revenue impact and $1.36M in combined BMW/VW SLA penalties."
+      },
+      {
+        "time": "\u2014",
+        "text": "Scenario: Pre-emptive Buffer Stock Build. $7,000"
+      },
+      {
+        "time": "\u2014",
+        "text": "APPROVE \u2014 Immediately increase safety stock to 60 days by pulling forward orders for SEMI-MCU-32. This provides the highest service level protection at the lowest cost, aligning with AutomotiveParts GmbH's low risk appetite."
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T02:42:48.373976"
+  },
+  {
+    "id": "RST-20260306-024255",
+    "type": "restock",
+    "severity": "MEDIUM",
+    "title": "Restock: SEMI-SENSOR-01",
+    "situation": "Inventory level (8d) below reorder threshold (10d) against 30d target buffer.",
+    "recommendation": "APPROVE \u2014 Restock SEMI-SENSOR-01 for 4400 units (est. $35,200).",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Inventory level (8d) below reorder threshold (10d) against 30d target buffer."
+      },
+      {
+        "time": "\u2014",
+        "text": "Estimated cost: $35,200"
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T02:42:55.375390",
+    "item_id": "SEMI-SENSOR-01",
+    "suggested_quantity": 4400,
+    "estimated_cost_usd": 35200,
+    "adjustment_reason": "Inventory level (8d) below reorder threshold (10d) against 30d target buffer."
+  },
+  {
+    "id": "RST-20260306-024255",
+    "type": "restock",
+    "severity": "MEDIUM",
+    "title": "Restock: STEEL-FRAME-02",
+    "situation": "Inventory level (18d) below reorder threshold (10d) against 30d target buffer.",
+    "recommendation": "APPROVE \u2014 Restock STEEL-FRAME-02 for 1200 units (est. $26,400).",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Inventory level (18d) below reorder threshold (10d) against 30d target buffer."
+      },
+      {
+        "time": "\u2014",
+        "text": "Estimated cost: $26,400"
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T02:42:55.379347",
+    "item_id": "STEEL-FRAME-02",
+    "suggested_quantity": 1200,
+    "estimated_cost_usd": 26400,
+    "adjustment_reason": "Inventory level (18d) below reorder threshold (10d) against 30d target buffer."
+  },
+  {
+    "id": "RST-20260306-121625",
+    "type": "restock",
+    "severity": "MEDIUM",
+    "title": "Restock Request: Sensor Module (SEMI-SENSOR-01)",
+    "situation": "Days on hand (8d) below reorder (10d); target buffer 30d.",
+    "recommendation": "APPROVE \u2014 Restock SEMI-SENSOR-01 for 4400 units (est. $35,200).",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Days on hand (8d) below reorder (10d); target buffer 30d."
+      },
+      {
+        "time": "\u2014",
+        "text": "Estimated cost: $35,200"
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T12:16:25.781693",
+    "item_id": "SEMI-SENSOR-01",
+    "suggested_quantity": 4400,
+    "estimated_cost_usd": 35200,
+    "adjustment_reason": "Days on hand (8d) below reorder (10d); target buffer 30d."
+  },
+  {
+    "id": "RST-20260306-121647",
+    "type": "restock",
+    "severity": "MEDIUM",
+    "title": "Restock Request: Frame Component (STEEL-FRAME-02)",
+    "situation": "Days on hand (18d) below reorder (10d); target buffer 30d.",
+    "recommendation": "APPROVE \u2014 Restock STEEL-FRAME-02 for 1200 units (est. $26,400).",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Days on hand (18d) below reorder (10d); target buffer 30d."
+      },
+      {
+        "time": "\u2014",
+        "text": "Estimated cost: $26,400"
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T12:16:47.794433",
+    "item_id": "STEEL-FRAME-02",
+    "suggested_quantity": 1200,
+    "estimated_cost_usd": 26400,
+    "adjustment_reason": "Days on hand (18d) below reorder (10d); target buffer 30d."
+  }
+]

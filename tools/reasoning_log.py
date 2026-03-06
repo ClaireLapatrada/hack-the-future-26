@@ -18,7 +18,7 @@ from functools import wraps
 from typing import Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-STREAM_LOG_PATH = PROJECT_ROOT / "ui" / "data" / "agent_reasoning_stream.json"
+STREAM_LOG_PATH = PROJECT_ROOT / "data" / "agent_reasoning_stream.json"
 
 try:
     from dotenv import load_dotenv
