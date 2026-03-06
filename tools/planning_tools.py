@@ -186,9 +186,13 @@ def rank_scenarios(scenarios_json: str, risk_appetite: str = "low") -> dict:
     w = RISK_WEIGHTS.get(risk_appetite, RISK_WEIGHTS["low"])
     ranked = []
     for s in scenarios:
+        if not isinstance(s, dict):
+            continue
+        financials = s.get("financials") if isinstance(s.get("financials"), dict) else {}
+        timing = s.get("timing") if isinstance(s.get("timing"), dict) else {}
         service_score = RANK_SERVICE_SCORES.get(s.get("service_level_protection", "Low"), 20)
-        cost_score = max(0, 100 - s.get("financials", {}).get("unit_cost_premium_pct", 0) / 3)
-        speed_score = max(0, 100 - s.get("timing", {}).get("implementation_days", 30) * 3)
+        cost_score = max(0, 100 - financials.get("unit_cost_premium_pct", 0) / 3)
+        speed_score = max(0, 100 - timing.get("implementation_days", 30) * 3)
         adjusted_score = service_score * w["service"] + cost_score * w["cost"] + speed_score * w["speed"]
         ranked.append({**s, "adjusted_score": round(adjusted_score, 1)})
     ranked.sort(key=lambda x: x["adjusted_score"], reverse=True)

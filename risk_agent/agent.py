@@ -12,6 +12,7 @@ Responsibilities:
 import os
 
 from google.adk.agents import Agent
+from tools.reasoning_log import with_reasoning_log
 from tools.risk_tools import (
     calculate_revenue_at_risk,
     get_inventory_runway,
@@ -80,12 +81,12 @@ risk_agent = Agent(
     ),
     instruction=RISK_INSTRUCTION,
     tools=[
-        calculate_revenue_at_risk,
-        get_inventory_runway,
-        calculate_sla_breach_probability,
-        get_supplier_exposure,
-        get_disruption_probability,
-        estimate_revenue_at_risk_executive,
-        get_operational_impact,
+        with_reasoning_log(calculate_revenue_at_risk),
+        with_reasoning_log(get_inventory_runway),
+        with_reasoning_log(calculate_sla_breach_probability),
+        with_reasoning_log(get_supplier_exposure),
+        with_reasoning_log(get_disruption_probability),
+        with_reasoning_log(estimate_revenue_at_risk_executive),
+        with_reasoning_log(get_operational_impact),
     ]
 )

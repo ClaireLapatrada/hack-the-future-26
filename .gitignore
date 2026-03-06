@@ -6,6 +6,16 @@ venv/
 .DS_Store
 orchestrator_agent/.adk/*
 orchestrator_agent/.adk/session.db
+action_agent/.adk/*
+action_agent/.adk/session.db
+memory_agent/.adk/*
+memory_agent/.adk/session.db
+perception_agent/.adk/*
+perception_agent/.adk/session.db
+planning_agent/.adk/*
+planning_agent/.adk/session.db
+risk_agent/.adk/*
+risk_agent/.adk/session.db
 ui/node_modules/
 ui/.next/
 ui/.turbo/

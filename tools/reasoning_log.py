@@ -6,6 +6,7 @@ Stream entry types: OBSERVE, ACTION, RESULT, REASON, REASONING, PLANNING, MEMORY
 Tool calls are logged with a domain type (perception→OBSERVE, risk→REASONING, etc.) instead of TOOL.
 
 Optional: set TOOL_CALL_DELAY_SECONDS in env to wait before each tool run (helps avoid Gemini rate limit).
+Optional: set RATE_LIMIT_RPM in env (e.g. 8) to cap requests per minute; see tools/rate_limiter.py.
 """
 
 import json
@@ -26,12 +27,36 @@ try:
 except ImportError:
     pass
 
-# Seconds to wait before each tool execution (spreads out calls to stay under rate limit)
 try:
-    _delay = float(os.getenv("TOOL_CALL_DELAY_SECONDS", "2.5"))
+    from tools.rate_limiter import wait_if_needed, record_request
+except ImportError:
+    def wait_if_needed() -> None: ...
+    def record_request() -> None: ...
+
+# Seconds to wait before each tool execution (spreads out calls to stay under 15 RPM)
+try:
+    _delay = float(os.getenv("TOOL_CALL_DELAY_SECONDS", "3"))
     TOOL_CALL_DELAY_SECONDS = max(0.0, min(30.0, _delay))
 except (TypeError, ValueError):
-    TOOL_CALL_DELAY_SECONDS = 2.5
+    TOOL_CALL_DELAY_SECONDS = 3
+
+
+def delay_tool_call(func):
+    """Decorator that sleeps TOOL_CALL_DELAY_SECONDS before each call. Preserves func signature for ADK AFC."""
+    import inspect
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        wait_if_needed()
+        record_request()
+        if TOOL_CALL_DELAY_SECONDS > 0:
+            time.sleep(TOOL_CALL_DELAY_SECONDS)
+        return func(*args, **kwargs)
+    try:
+        wrapper.__signature__ = inspect.signature(func)
+    except Exception:
+        pass
+    return wrapper
+
 
 # Map tool module to stream tag (no generic TOOL; use domain tag)
 _TOOL_MODULE_TO_TYPE = {
@@ -130,10 +155,12 @@ def get_entries() -> list[dict]:
 
 
 def with_reasoning_log(func):
-    """Decorator: log domain-specific type for tool call, then RESULT after. Optionally delays before each call to ease rate limits."""
+    """Decorator: log domain-specific type for tool call, then RESULT after. Preserves signature for ADK AFC."""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
+        wait_if_needed()
+        record_request()
         if TOOL_CALL_DELAY_SECONDS > 0:
             time.sleep(TOOL_CALL_DELAY_SECONDS)
         import inspect
@@ -178,4 +205,9 @@ def with_reasoning_log(func):
             flush()
             raise
 
+    import inspect
+    try:
+        wrapper.__signature__ = inspect.signature(func)
+    except Exception:
+        pass
     return wrapper

@@ -423,5 +423,29 @@
     "lessons_learned": "To be determined based on outcome.",
     "logged_by": "Supply Chain Resilience Agent",
     "logged_at": "2026-03-06T02:42:55.391441"
+  },
+  {
+    "event_id": "EVT-2026-0306-019",
+    "date": "2026-03-06",
+    "type": "Shipping Lane/Supplier Disruption",
+    "region": "Asia-Europe/Taiwan",
+    "severity": "HIGH",
+    "affected_suppliers": [
+      "SUP-001 (SemiTech Asia)"
+    ],
+    "description": "Disruption of Asia-Europe Suez shipping lane and high geopolitical risk for SUP-001.",
+    "impact": {
+      "delay_days": null,
+      "revenue_at_risk_usd": null,
+      "actual_revenue_lost_usd": null
+    },
+    "mitigation_taken": {
+      "action": "Pre-emptive buffer build",
+      "cost_usd": 9999,
+      "outcome": "Pending"
+    },
+    "lessons_learned": "To be determined based on outcome.",
+    "logged_by": "Supply Chain Resilience Agent",
+    "logged_at": "2026-03-06T12:17:54.455217"
   }
 ]

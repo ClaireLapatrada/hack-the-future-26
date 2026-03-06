@@ -15,6 +15,7 @@ Responsibilities:
 import os
 
 from google.adk.agents import Agent
+from tools.reasoning_log import with_reasoning_log
 from tools.action_tools import (
     draft_supplier_email,
     send_slack_alert,
@@ -123,16 +124,16 @@ action_agent = Agent(
     ),
     instruction=ACTION_INSTRUCTION,
     tools=[
-        draft_supplier_email,
-        send_slack_alert,
-        flag_erp_reorder_adjustment,
-        generate_executive_summary,
-        submit_mitigation_for_approval,
-        get_po_adjustment_suggestions,
-        submit_restock_for_approval,
-        execute_approved_restock,
-        escalate_to_management,
-        get_client_context,
-        get_workflow_integration_status,
+        with_reasoning_log(draft_supplier_email),
+        with_reasoning_log(send_slack_alert),
+        with_reasoning_log(flag_erp_reorder_adjustment),
+        with_reasoning_log(generate_executive_summary),
+        with_reasoning_log(submit_mitigation_for_approval),
+        with_reasoning_log(get_po_adjustment_suggestions),
+        with_reasoning_log(submit_restock_for_approval),
+        with_reasoning_log(execute_approved_restock),
+        with_reasoning_log(escalate_to_management),
+        with_reasoning_log(get_client_context),
+        with_reasoning_log(get_workflow_integration_status),
     ]
 )

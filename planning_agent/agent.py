@@ -12,6 +12,7 @@ Responsibilities:
 import os
 
 from google.adk.agents import Agent
+from tools.reasoning_log import with_reasoning_log
 from tools.planning_tools import (
     simulate_mitigation_scenario,
     get_alternative_suppliers,
@@ -110,15 +111,15 @@ planning_agent = Agent(
     ),
     instruction=PLANNING_INSTRUCTION,
     tools=[
-        simulate_mitigation_scenario,
-        get_alternative_suppliers,
-        get_airfreight_rate_estimate,
-        rank_scenarios,
-        evaluate_mitigation_tradeoffs,
-        run_scenario_simulation,
-        optimize_supplier_reallocation,
-        recommend_buffer_stock,
-        create_planning_document,
-        get_operational_impact,
+        with_reasoning_log(simulate_mitigation_scenario),
+        with_reasoning_log(get_alternative_suppliers),
+        with_reasoning_log(get_airfreight_rate_estimate),
+        with_reasoning_log(rank_scenarios),
+        with_reasoning_log(evaluate_mitigation_tradeoffs),
+        with_reasoning_log(run_scenario_simulation),
+        with_reasoning_log(optimize_supplier_reallocation),
+        with_reasoning_log(recommend_buffer_stock),
+        with_reasoning_log(create_planning_document),
+        with_reasoning_log(get_operational_impact),
     ]
 )
