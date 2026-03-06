@@ -264,5 +264,55 @@
     "suggested_quantity": 1200,
     "estimated_cost_usd": 26400,
     "adjustment_reason": "Inventory level (18d) below reorder threshold (10d) against 30d target buffer."
+  },
+  {
+    "id": "RST-20260306-121625",
+    "type": "restock",
+    "severity": "MEDIUM",
+    "title": "Restock Request: Sensor Module (SEMI-SENSOR-01)",
+    "situation": "Days on hand (8d) below reorder (10d); target buffer 30d.",
+    "recommendation": "APPROVE \u2014 Restock SEMI-SENSOR-01 for 4400 units (est. $35,200).",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Days on hand (8d) below reorder (10d); target buffer 30d."
+      },
+      {
+        "time": "\u2014",
+        "text": "Estimated cost: $35,200"
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T12:16:25.781693",
+    "item_id": "SEMI-SENSOR-01",
+    "suggested_quantity": 4400,
+    "estimated_cost_usd": 35200,
+    "adjustment_reason": "Days on hand (8d) below reorder (10d); target buffer 30d."
+  },
+  {
+    "id": "RST-20260306-121647",
+    "type": "restock",
+    "severity": "MEDIUM",
+    "title": "Restock Request: Frame Component (STEEL-FRAME-02)",
+    "situation": "Days on hand (18d) below reorder (10d); target buffer 30d.",
+    "recommendation": "APPROVE \u2014 Restock STEEL-FRAME-02 for 1200 units (est. $26,400).",
+    "confidence": "90%",
+    "auditLog": [
+      {
+        "time": "\u2014",
+        "text": "Days on hand (18d) below reorder (10d); target buffer 30d."
+      },
+      {
+        "time": "\u2014",
+        "text": "Estimated cost: $26,400"
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2026-03-06T12:16:47.794433",
+    "item_id": "STEEL-FRAME-02",
+    "suggested_quantity": 1200,
+    "estimated_cost_usd": 26400,
+    "adjustment_reason": "Days on hand (18d) below reorder (10d); target buffer 30d."
   }
 ]

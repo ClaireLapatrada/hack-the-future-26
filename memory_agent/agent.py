@@ -11,6 +11,7 @@ Responsibilities:
 import os
 
 from google.adk.agents import Agent
+from tools.reasoning_log import with_reasoning_log
 from tools.memory_tools import (
     retrieve_similar_disruptions,
     log_disruption_event,
@@ -79,8 +80,8 @@ memory_agent = Agent(
     ),
     instruction=MEMORY_INSTRUCTION,
     tools=[
-        retrieve_similar_disruptions,
-        log_disruption_event,
-        get_recurring_risk_patterns,
+        with_reasoning_log(retrieve_similar_disruptions),
+        with_reasoning_log(log_disruption_event),
+        with_reasoning_log(get_recurring_risk_patterns),
     ]
 )

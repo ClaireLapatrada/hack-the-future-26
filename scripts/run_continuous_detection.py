@@ -8,8 +8,11 @@ Run from project root:
   python scripts/run_continuous_detection.py
   python scripts/run_continuous_detection.py --interval 300   # 5 min
 
-Gemini: default model is gemini-3.1-flash-lite-preview. Set GEMINI_MODEL to override. We retry up to 10
-times on 429. Use --interval 120 or higher; or set GEMINI_MODEL and enable billing.
+By default uses SUB-AGENTS (orchestrator_agent/agent.py). Set ORCHESTRATOR_USE_FLAT=1
+to use the flat orchestrator (one agent, all tools) instead.
+
+Env: GEMINI_MODEL, TOOL_CALL_DELAY_SECONDS (default 6), STARTUP_DELAY_SECONDS (default 15 for sub-agents).
+If you hit 429 with sub-agents, try STARTUP_DELAY_SECONDS=20 and TOOL_CALL_DELAY_SECONDS=8.
 """
 
 import argparse
@@ -43,6 +46,10 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from tools.reasoning_log import append_entry, flush, clear as clear_reasoning_log
 
 
+# Resolved model (after .env) — log so user can confirm 3.1 vs 2.5
+_RESOLVED_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
+
+
 # Default prompt for each detection cycle
 DEFAULT_PROMPT = (
     "Check for any disruption. Run the full pipeline: "
@@ -56,13 +63,16 @@ DEFAULT_PROMPT = (
 
 
 def _load_agent():
-    """Load orchestrator root_agent from orchestrator_agent/agent.py."""
+    """Load orchestrator. Default: sub-agents (agent.py). Set ORCHESTRATOR_USE_FLAT=1 for flat/tools-only."""
+    use_flat = os.environ.get("ORCHESTRATOR_USE_FLAT", "0").strip().lower() in ("1", "true", "yes")
+    module_name = "orchestrator_agent.agent_flat" if use_flat else "orchestrator_agent.agent"
+    agent_file = "agent_flat.py" if use_flat else "agent.py"
+    agent_path = PROJECT_ROOT / "orchestrator_agent" / agent_file
     import importlib.util
-    agent_path = PROJECT_ROOT / "orchestrator_agent" / "agent.py"
-    spec = importlib.util.spec_from_file_location("orchestrator_agent.agent", agent_path)
+    spec = importlib.util.spec_from_file_location(module_name, agent_path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["orchestrator_agent"] = type(sys)("orchestrator_agent")
-    sys.modules["orchestrator_agent.agent"] = mod
+    sys.modules[module_name] = mod
     spec.loader.exec_module(mod)
     return getattr(mod, "root_agent")
 
@@ -107,22 +117,32 @@ def _is_rate_limit_error(e: BaseException) -> bool:
 
 
 def _extract_retry_seconds(e: BaseException) -> int:
-    """Parse 'Please retry in 53.18s' from error message; default 55."""
+    """Parse 'Please retry in 53.18s' from error message; default 15 for exponential backoff base."""
     import re
     m = re.search(r"retry in (\d+(?:\.\d+)?)\s*s", str(e), re.I)
     if m:
         return min(120, max(10, int(float(m.group(1)) + 1)))
-    return 55
+    return 15
+
+
+def _backoff_seconds(attempt: int, api_suggested: int | None) -> float:
+    """Exponential backoff: base * 2^attempt + 0–3s jitter, capped at 120s. Use api_suggested as base if provided."""
+    import random
+    base = api_suggested if api_suggested is not None else 15
+    wait = min(120.0, base * (2 ** attempt)) + random.uniform(0, 3)
+    return min(120.0, wait)
 
 
 async def _retry_cycle(runner, session, prompt: str, max_retries: int = 3) -> None:
-    """Run one cycle; on 429 wait and retry up to max_retries times."""
+    """Run one cycle; on 429 wait with exponential backoff and retry up to max_retries times."""
     last_e = None
     for attempt in range(max_retries + 1):
         try:
             if attempt > 0 and last_e:
-                wait_s = _extract_retry_seconds(last_e)
-                print(f"[429] Rate limit. Waiting {wait_s}s (attempt {attempt + 1}/{max_retries + 1})...", file=sys.stderr)
+                api_s = _extract_retry_seconds(last_e) if last_e else None
+                wait_s = _backoff_seconds(attempt - 1, api_s)
+                print(f"[429] Rate limit. Exponential backoff: waiting {wait_s:.0f}s (attempt {attempt + 1}/{max_retries + 1})...", file=sys.stderr)
+                print("  Tip: RPM/TPM are per-minute; wait or use ORCHESTRATOR_USE_FLAT=1. See docs/RATE_LIMITS.md.", file=sys.stderr)
                 await asyncio.sleep(wait_s)
             await run_one_cycle(runner, session, prompt)
             return
@@ -133,6 +153,7 @@ async def _retry_cycle(runner, session, prompt: str, max_retries: int = 3) -> No
                 return
     if last_e:
         print(f"[error] Still rate limited after {max_retries + 1} attempts. Try --interval 120 or enable billing.", file=sys.stderr)
+        print(f"  To use fewer API calls, run with: ORCHESTRATOR_USE_FLAT=1", file=sys.stderr)
         print(f"  {last_e}", file=sys.stderr)
 
 
@@ -153,6 +174,14 @@ async def run_one_cycle(runner, session, prompt: str) -> None:
 
 async def main_async(interval_seconds: int, prompt: str, max_retries: int = 10) -> None:
     agent = _load_agent()
+    print(f"[config] GEMINI_MODEL = {_RESOLVED_MODEL}", file=sys.stderr)
+    mod = sys.modules.get("orchestrator_agent.agent")
+    if mod is not None and getattr(mod, "_enabled", None) is not None:
+        print(f"[config] ORCHESTRATOR_SUBAGENTS = {os.environ.get('ORCHESTRATOR_SUBAGENTS', 'all')} → {mod._enabled}", file=sys.stderr)
+    # When no sub-agents we make 1 request only; use short prompt to minimize TPM
+    if mod is not None and getattr(mod, "_enabled", None) == []:
+        prompt = "Run diagnostic."
+        print("[config] Using short diagnostic prompt (1 API request, no tools).", file=sys.stderr)
     app = App(name="orchestrator_agent", root_agent=agent)
     session_service = InMemorySessionService()
     session = await session_service.create_session(
@@ -166,6 +195,17 @@ async def main_async(interval_seconds: int, prompt: str, max_retries: int = 10) 
         memory_service=InMemoryMemoryService(),
         credential_service=InMemoryCredentialService(),
     )
+    # Wait before first request so we're in a fresh rate-limit window (sub-agents = 2+ requests back-to-back)
+    use_flat = os.environ.get("ORCHESTRATOR_USE_FLAT", "0").strip().lower() in ("1", "true", "yes")
+    mod = sys.modules.get("orchestrator_agent.agent")
+    no_subagents = mod is not None and getattr(mod, "_enabled", None) == []
+    default_startup = 10 if (use_flat or no_subagents) else 15
+    startup_delay = int(os.environ.get("STARTUP_DELAY_SECONDS", str(default_startup)))
+    if not use_flat and not no_subagents and startup_delay < 15:
+        startup_delay = 15
+    if startup_delay > 0:
+        print(f"Waiting {startup_delay}s before first run (avoids rate limit on startup)...", file=sys.stderr)
+        await asyncio.sleep(startup_delay)
     cycle = 0
     try:
         while True:
@@ -200,7 +240,7 @@ def main():
         "--retries",
         type=int,
         default=10,
-        help="Max retries on 429 per cycle (default 10; use with gemini-2.5-flash-lite 10 rpm).",
+        help="Max retries on 429 per cycle (default 10; Gemini free tier has strict RPM).",
     )
     parser.add_argument(
         "--prompt",

@@ -4,7 +4,7 @@ helloww!
 
 ## Overview
 
-- **Model:** Gemini 2.5 Flash Lite (default; 10 requests/min free tier). Override with `GEMINI_MODEL`.
+- **Model:** Gemini 3.1 Flash Lite (default `gemini-3.1-flash-lite-preview`). Override with `GEMINI_MODEL`.
 
 ## Requirements
 
@@ -84,71 +84,6 @@ The Next.js dashboard shows an **Agent Reasoning Stream** (OBSERVE, ACTION, RESU
 Then refresh the dashboard or Disruptions page; they read from `/api/agent-stream`, which serves that file. Tools are wrapped to log **TOOL** (call) and **RESULT** (summary); model text is logged as **REASON**, **OBSERVE**, or **ACTION**.
 
 **Rate limits (429):** Default model is `gemini-2.5-flash-lite` (10 requests/min free tier). Scripts retry up to 10 times on 429. Use `--interval 120` or higher. To space out tool calls and reduce burst load, set `TOOL_CALL_DELAY_SECONDS=2.5` (or 3) in `.env` or `orchestrator_agent/.env`. See [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
-
-## Suggested features — implementation status
-
-Legend: **✅ Finished (real)** = live API or real integration | **✅ Finished (mock)** = implemented with mock data/config | **❌ Not implemented**
-
-### 1. Perception Layer
-
-| Feature | Status | Notes |
-|--------|--------|--------|
-| News ingestion module | ✅ Finished (real) | `search_disruption_news` — Google Custom Search when `GOOGLE_SEARCH_*` set; else error, no mock |
-| Supply risk classification | ⚠️ Partial | LLM classifies from news/signals; no dedicated classifier module |
-| ERP signal monitoring | ✅ Finished (mock) | Risk tools read `data/mock_erp.json` (inventory, open POs); no live ERP |
-| Supplier health scoring | ✅ Finished (real/mock) | `score_supplier_health` — Gemini when disruption initiated; else canned “Stable” from `config/active_disruption.json` |
-| Shipping lane status | ✅ Finished (mock) | `get_shipping_lane_status` — reads `config/active_disruption.json`; initiate/clear to toggle |
-| Climate alerts | ✅ Finished (real) | `get_climate_alerts` — NASA EONET (optional `NASA_API_KEY`) |
-
-### 2. Risk Intelligence Engine
-
-| Feature | Status | Notes |
-|--------|--------|--------|
-| Disruption probability scoring | ⚠️ Partial | `calculate_sla_breach_probability` uses a simple formula; no full probabilistic model |
-| Operational impact modeling | ✅ Finished (mock) | `calculate_revenue_at_risk`, `get_supplier_exposure`, `get_inventory_runway` — use `mock_erp.json` + `config/manufacturer_profile.json` |
-| Revenue-at-risk estimation | ✅ Finished (mock) | `calculate_revenue_at_risk` — production lines, SLAs, inventory from config |
-| Multi-variable trade-off simulation | ✅ Finished (mock) | `rank_scenarios` — cost/service/speed from `planning_config.json` |
-
-### 3. Planning & Decision Engine
-
-| Feature | Status | Notes |
-|--------|--------|--------|
-| Scenario simulation (cost vs service) | ✅ Finished (mock) | `simulate_mitigation_scenario` — airfreight, buffer_build, alternate_supplier, etc. from `planning_config.json` |
-| Supplier reallocation optimization | ✅ Finished (mock) | `get_alternative_suppliers` — list from config (e.g. ChipWorks Korea, EuroSemi); no optimization solver |
-| Buffer stock strategy modeling | ✅ Finished (mock) | “buffer_build” scenario in config; inventory policy in manufacturer_profile |
-| Decision tree reasoning | ✅ Finished (mock) | Orchestrator LLM + `rank_scenarios`; no explicit decision tree structure |
-| Airfreight rate estimate | ✅ Finished (mock) | `get_airfreight_rate_estimate` — rates from `planning_config.json` |
-
-### 4. Autonomous Action Layer
-
-| Feature | Status | Notes |
-|--------|--------|--------|
-| Auto-generated supplier emails | ✅ Finished (mock) | `draft_supplier_email` — generates draft; never auto-sends (instruction: human approval) |
-| Purchase order adjustment suggestions | ✅ Finished (mock) | `flag_erp_reorder_adjustment` — returns “mock_note”; no SAP/Oracle integration |
-| Escalation triggers | ✅ Finished (mock) | `send_slack_alert` — returns success + mock_note; no real Slack API |
-| Executive summary | ✅ Finished (mock) | `generate_executive_summary` — builds summary from JSON inputs; no workflow integration |
-| Workflow integrations | ❌ Not implemented | No Gmail, Slack, or ERP APIs wired |
-
-### 5. Memory & Reflection System
-
-| Feature | Status | Notes |
-|--------|--------|--------|
-| Logs past disruptions | ✅ Finished (mock) | `log_disruption_event` — appends to `mock_disruption_history.json` (or Qdrant if configured) |
-| Evaluates mitigation success | ⚠️ Partial | History stores outcome; `retrieve_similar_disruptions` surfaces past cases; no formal “success score” |
-| Improves future recommendations | ⚠️ Partial | LLM uses memory context in pipeline; no explicit learning loop or model update |
-| Similar-disruption retrieval | ✅ Finished (mock/real) | `retrieve_similar_disruptions` — keyword or Qdrant embeddings when `QDRANT_URL` + `GEMINI_API_KEY` set |
-| Recurring risk patterns | ✅ Finished (mock) | `get_recurring_risk_patterns` — derived from history; no external pattern DB |
-
-### 6. Decision Transparency
-
-| Feature | Status | Notes |
-|--------|--------|--------|
-| Explainable reasoning traces | ⚠️ Partial | Final “Supply Chain Operations Briefing” includes reasoning; no step-by-step trace UI |
-| Risk justification logic | ⚠️ Partial | Briefing explains threat level and recommendation; logic in prompt + tool outputs |
-| Human override thresholds | ✅ Finished (doc only) | In orchestrator instruction: e.g. ERP > $50K → procurement approval; spend > $150K → CFO; emails never auto-sent |
-| Bias and constraint validation | ❌ Not implemented | No formal bias checks or constraint validation layer |
-
----
 
 ## Continuous detection and initiate event
 

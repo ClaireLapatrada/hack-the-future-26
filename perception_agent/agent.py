@@ -22,8 +22,8 @@ Responsibilities:
 """
 
 from google.adk.agents import Agent
-from google.adk.tools import google_search
 import os
+from tools.reasoning_log import with_reasoning_log
 from tools.perception_tools import (
     search_disruption_news,
     get_shipping_lane_status,
@@ -36,7 +36,7 @@ You are the Perception Agent for an Autonomous Supply Chain Resilience system.
 Your role is to continuously scan for external signals that could disrupt the manufacturer's supply chain.
 
 Your responsibilities:
-1. Search for recent disruption news relevant to the manufacturer's supply regions and supplier countries (use google_search for general web search, or search_disruption_news for the configured Custom Search Engine over reliable sources)
+1. Search for recent disruption news (use search_disruption_news with a query for the manufacturer's regions/suppliers)
 2. Check the status of all active shipping lanes used by the manufacturer
 3. Get climate and disaster alerts for supplier regions
 4. Score the health of key suppliers
@@ -72,12 +72,11 @@ perception_agent = Agent(
         "the supply chain risk pipeline."
     ),
     instruction=PERCEPTION_INSTRUCTION,
-    # google_search is a pre-built ADK tool for web search; search_disruption_news uses Custom Search Engine over curated sources.
+    # with_reasoning_log logs each tool call and result to the UI stream in real time (OBSERVE + RESULT).
     tools=[
-        google_search,
-        search_disruption_news,
-        get_shipping_lane_status,
-        get_climate_alerts,
-        score_supplier_health,
+        with_reasoning_log(search_disruption_news),
+        with_reasoning_log(get_shipping_lane_status),
+        with_reasoning_log(get_climate_alerts),
+        with_reasoning_log(score_supplier_health),
     ],
 )

@@ -564,6 +564,8 @@ def estimate_revenue_at_risk_executive(operational_impact_json: str | None = Non
 
     Args:
         operational_impact_json: Optional JSON string from get_operational_impact(); if not provided, calls it internally.
+            Can be the full return (with status) or a payload with production_downtime_probability_pct,
+            affected_production_lines, estimated_delay_days_min/max, summary.
 
     Returns:
         revenue_at_risk_usd: Expected revenue at risk.
@@ -576,16 +578,24 @@ def estimate_revenue_at_risk_executive(operational_impact_json: str | None = Non
     from tools.operational_impact_tools import get_operational_impact
 
     profile = _load_profile()
+    from_json = False
     if operational_impact_json:
         try:
             impact = json.loads(operational_impact_json)
+            if isinstance(impact, dict):
+                from_json = True
+            else:
+                impact = get_operational_impact()
         except (TypeError, json.JSONDecodeError):
             impact = get_operational_impact()
     else:
         impact = get_operational_impact()
 
-    if impact.get("status") != "success":
+    # Only require status when impact came from get_operational_impact(); parsed JSON may omit it
+    if not from_json and impact.get("status") != "success":
         return {"status": "error", "message": "Could not compute operational impact"}
+    if from_json and impact.get("status") == "error":
+        return {"status": "error", "message": impact.get("message", "Could not compute operational impact")}
 
     lines = impact.get("affected_production_lines") or []
     delay_min = impact.get("estimated_delay_days_min", 5)

@@ -137,5 +137,107 @@
     "documentType": "mitigation_plan",
     "affectedItemId": "SEMI-MCU-32",
     "riskAppetite": "low"
+  },
+  {
+    "id": "PLAN-20260306-114951",
+    "slug": "mitigation-strategy-semi-mcu-32-supply-chain-disruption",
+    "title": "Mitigation Strategy: SEMI-MCU-32 Supply Chain Disruption",
+    "createdAt": "2026-03-06T11:49:51.776157",
+    "situationSummary": "Supply chain disruption identified for SEMI-MCU-32 with 100% probability of plant shutdown within 10 days if no mitigation is taken. A 16-day disruption window is modeled. Pre-emptive buffer build is the most effective strategy to ensure high service-level performance and prevent stockouts.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "scenario_id": "buffer_build",
+        "expected_cost_increase_usd": 10001.41,
+        "expected_service_level": "High",
+        "average_score": 98.9,
+        "description": "Immediately increase safety stock to 60 days by pulling forward orders."
+      },
+      {
+        "scenario_name": "Emergency Airfreight",
+        "scenario_id": "airfreight",
+        "expected_cost_increase_usd": 215056.2,
+        "expected_service_level": "High",
+        "average_score": 74.1,
+        "description": "Redirect in-transit or new order via air cargo to bypass sea lane disruption."
+      },
+      {
+        "scenario_name": "Spot Market Purchase",
+        "scenario_id": "spot_market",
+        "expected_cost_increase_usd": 36132.9,
+        "expected_service_level": "Medium",
+        "average_score": 70,
+        "description": "Source required components from authorized spot/grey market distributors."
+      },
+      {
+        "scenario_name": "Alternate Supplier Activation",
+        "scenario_id": "alternate_supplier",
+        "expected_cost_increase_usd": 56253.16,
+        "expected_service_level": "Medium",
+        "average_score": 65,
+        "description": "Qualify and onboard a backup semiconductor supplier (e.g., South Korea or EU)."
+      }
+    ],
+    "costImpactSummary": "Expected cost increase: $10,001 (16%)",
+    "serviceLevelImpact": "High (SLA compliance maintained)",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
+  },
+  {
+    "id": "PLAN-20260306-121456",
+    "slug": "mitigation-strategy-for-semi-mcu-32-supply-disruption",
+    "title": "Mitigation Strategy for SEMI-MCU-32 Supply Disruption",
+    "createdAt": "2026-03-06T12:14:56.289457",
+    "situationSummary": "100% probability of plant shutdown within 10 days for ECU Control Modules due to reliance on single-sourced SEMI-MCU-32. Buffer build is the most resilient strategy.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_id": "buffer_build",
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "description": "Immediately increase safety stock to 60 days by pulling forward orders.",
+        "expected_service_level": "High",
+        "expected_cost_increase_usd": 9999.33,
+        "average_score": 98.9
+      },
+      {
+        "scenario_id": "airfreight",
+        "scenario_name": "Emergency Airfreight",
+        "description": "Redirect in-transit or new order via air cargo to bypass sea lane disruption.",
+        "expected_service_level": "High",
+        "expected_cost_increase_usd": 214973.2,
+        "average_score": 74.1
+      },
+      {
+        "scenario_id": "spot_market",
+        "scenario_name": "Spot Market Purchase",
+        "description": "Source required components from authorized spot/grey market distributors.",
+        "expected_service_level": "Medium",
+        "expected_cost_increase_usd": 36121.23,
+        "average_score": 70
+      },
+      {
+        "scenario_id": "alternate_supplier",
+        "scenario_name": "Alternate Supplier Activation",
+        "description": "Qualify and onboard a backup semiconductor supplier (e.g., South Korea or EU).",
+        "expected_service_level": "Medium",
+        "expected_cost_increase_usd": 56248.49,
+        "average_score": 65
+      },
+      {
+        "scenario_id": "demand_deferral",
+        "scenario_name": "Customer Demand Deferral",
+        "description": "Negotiate delivery timeline extension with customers to absorb delay.",
+        "expected_service_level": "Low",
+        "expected_cost_increase_usd": 0,
+        "average_score": 50.6
+      }
+    ],
+    "costImpactSummary": "Expected cost increase: $9,999.33 (16.0%)",
+    "serviceLevelImpact": "High expected service-level performance.",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
   }
 ]
