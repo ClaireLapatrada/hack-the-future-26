@@ -10,7 +10,7 @@ import {
 } from "../../../lib/risk-calculation";
 import { computeOperationalImpact } from "../../../lib/operational-impact";
 import { computeRevenueAtRiskExecutive } from "../../../lib/revenue-at-risk";
-import { computeMitigationTradeoff } from "../../../lib/mitigation-tradeoff";
+import { computeMitigationTradeoff, type PlanningConfig} from "../../../lib/mitigation-tradeoff";
 
 const DATA_ROOT = process.cwd();
 
@@ -36,7 +36,6 @@ function readDisruptionHistory(): RiskDisruptionEvent[] {
         return Array.isArray(data) ? data : [];
       }
     } catch {
-      continue;
     }
   }
   return [];
@@ -53,14 +52,17 @@ function readActiveDisruptionConfig(): ActiveDisruptionConfig {
         return JSON.parse(raw) as ActiveDisruptionConfig;
       }
     } catch {
-      continue;
     }
   }
   return { active: false, supplier_health_degraded: false, shipping_lanes: {} };
 }
 
 /** Read planning_config from project root for mitigation trade-off. */
-function readPlanningConfig(): { scenario_definitions?: Record<string, unknown>; risk_appetite_weights?: Record<string, { service: number; cost: number; speed: number }>; rank_service_scores?: Record<string, number> } | null {
+function readPlanningConfig(): {
+  scenario_definitions?: Record<string, unknown>;
+  risk_appetite_weights?: Record<string, { service: number; cost: number; speed: number }>;
+  rank_service_scores?: Record<string, number>
+} | null {
   const paths = [
     path.join(DATA_ROOT, "..", "planning_config.json"),
     path.join(DATA_ROOT, "planning_config.json"),
@@ -69,10 +71,12 @@ function readPlanningConfig(): { scenario_definitions?: Record<string, unknown>;
     try {
       if (fs.existsSync(p)) {
         const raw = fs.readFileSync(p, "utf-8");
-        return JSON.parse(raw) as { scenario_definitions?: Record<string, unknown>; risk_appetite_weights?: Record<string, { service: number; cost: number; speed: number }>; rank_service_scores?: Record<string, number> };
+        return JSON.parse(raw) as {
+          scenario_definitions?: Record<string, unknown>;
+          risk_appetite_weights?: Record<string, { service: number; cost: number; speed: number }>;
+          rank_service_scores?: Record<string, number> };
       }
     } catch {
-      continue;
     }
   }
   return null;
@@ -112,13 +116,18 @@ type ManufacturerProfile = {
   }>;
   inventory_policy?: { target_buffer_days: number; reorder_threshold_days: number; max_buffer_days: number };
   customer_slas?: Array<{ customer: string; on_time_delivery_pct: number; penalty_per_day_usd: number }>;
-  production_lines?: Array<{ line_id: string; product: string; daily_output_units: number; daily_revenue_usd: number; [k: string]: unknown }>;
+  production_lines?: Array<{ line_id: string; product: string; daily_output_units: number; daily_revenue_usd: number;
+    [k: string]: unknown }>;
 };
 
 type MockErp = {
   inventory?: unknown[];
   open_purchase_orders?: unknown[];
 };
+
+function erpInventory(erp: MockErp): import("../../../lib/operational-impact").InventoryItem[] {
+  return (erp.inventory ?? []) as import("../../../lib/operational-impact").InventoryItem[];
+}
 
 type ActiveDisruptionConfig = {
   active: boolean;
@@ -141,15 +150,16 @@ export async function GET() {
         activeDisruptionForRisk
       );
       const operationalImpact = computeOperationalImpact(
-        erp.inventory ?? [],
+        erpInventory(erp),
         profile.production_lines ?? [],
         profile.suppliers ?? [],
-        activeDisruptionForRisk as { active?: boolean; shipping_lanes?: Record<string, { status?: string; avg_delay_days?: number }> }
+        activeDisruptionForRisk as { active?: boolean; shipping_lanes?: Record<string, { status?: string;
+          avg_delay_days?: number }> }
       );
       const revenueAtRiskExecutive = computeRevenueAtRiskExecutive(operationalImpact, profile);
       const planningConfig = readPlanningConfig();
       const mitigationTradeoff = planningConfig
-        ? computeMitigationTradeoff(planningConfig, 10, 5000, "medium")
+        ? computeMitigationTradeoff(planningConfig as PlanningConfig, 10, 5000, "medium")
         : null;
       const singleSourceSuppliers = suppliers.filter((s) => s.single_source === true);
       const maxSpendPct = suppliers.length === 0 ? 0 : Math.max(0, ...suppliers.map((s) => Number(s.spend_pct) || 0));
@@ -167,7 +177,7 @@ export async function GET() {
         pendingApprovals: 0,
         overallSupplyRisk: aggregateDisruptionRiskPct,
         logisticsFreight: Math.min(100, realItems.length * 25),
-        supplierConcentration: Math.min(100, Math.max(0, Math.round(0 + maxSpendPct + singleSourceSuppliers.length * 40))),
+        supplierConcentration: Math.min(100, Math.max(0, Math.round(maxSpendPct + singleSourceSuppliers.length * 40))),
         suppliers: profile.suppliers?.length ?? 0,
         inventoryPolicy: profile.inventory_policy,
         openPOs: erp.open_purchase_orders?.length ?? 0,
@@ -176,7 +186,10 @@ export async function GET() {
         activeDisruptionsTrendPct: 0,
         pendingApprovalsTrendPct: 0,
       };
-      return NextResponse.json({ disruptions: disruptionList, kpis, supplierRisks, operationalImpact, revenueAtRiskExecutive, mitigationTradeoff, allSuppliers: (profile.suppliers ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })) });
+      return NextResponse.json({
+        disruptions: disruptionList, kpis, supplierRisks, operationalImpact, revenueAtRiskExecutive, mitigationTradeoff,
+        allSuppliers: (profile.suppliers ?? []
+        ).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })) });
     }
 
     const disruptions = readJson<DisruptionEvent[]>("data/mock_disruption_history.json");
@@ -272,7 +285,8 @@ export async function GET() {
     const maxSpendPct = suppliers.length === 0 ? 0 : Math.max(0, ...suppliers.map((s) => Number(s.spend_pct) || 0));
     const supplierConcentrationScore = Math.min(
       100,
-      Math.max(0, Math.round(0 + maxSpendPct + singleSourceSuppliers.length * 40 + (activeDisruption.supplier_health_degraded ? 15 : 0)))
+      Math.max(0, Math.round(maxSpendPct + singleSourceSuppliers.length * 40 +
+          (activeDisruption.supplier_health_degraded ? 15 : 0)))
     );
 
     const { supplierRisks, aggregateDisruptionRiskPct } = computeDashboardRisk(
@@ -284,15 +298,16 @@ export async function GET() {
     const disruptionRiskScore = aggregateDisruptionRiskPct;
 
     const operationalImpact = computeOperationalImpact(
-      erp.inventory ?? [],
+      erpInventory(erp),
       profile.production_lines ?? [],
       profile.suppliers ?? [],
-      activeDisruption as { active?: boolean; shipping_lanes?: Record<string, { status?: string; avg_delay_days?: number }> }
+      activeDisruption as { active?: boolean; shipping_lanes?: Record<string, { status?: string; avg_delay_days?:
+              number }> }
     );
     const revenueAtRiskExecutive = computeRevenueAtRiskExecutive(operationalImpact, profile);
     const planningConfig = readPlanningConfig();
     const mitigationTradeoff = planningConfig
-      ? computeMitigationTradeoff(planningConfig, 10, 5000, "medium")
+      ? computeMitigationTradeoff(planningConfig as PlanningConfig, 10, 5000, "medium")
       : null;
 
     const logisticsFreightScore =
@@ -300,7 +315,8 @@ export async function GET() {
 
     const disruptionList = effectiveDisruptions.slice(0, 20).map((d) => ({
       id: d.event_id,
-      severity: d.severity === "CRITICAL" ? "CRITICAL" : d.severity === "High" ? "HIGH" : d.severity === "Medium" ? "MEDIUM" : "LOW",
+      severity: d.severity === "CRITICAL" ? "CRITICAL" : d.severity === "High" ? "HIGH" : d.severity === "Medium" ?
+          "MEDIUM" : "LOW",
       title: d.description.slice(0, 80) + (d.description.length > 80 ? "…" : ""),
       status: d.mitigation_taken?.outcome === "Pending" ? "Investigating" : "Mitigating",
       age: formatAge(d.date, d.logged_at),

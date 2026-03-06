@@ -1,8 +1,8 @@
 venv/
 .env
 .env*
-**/.env
-**/.env*
+.env
+.env
 .DS_Store
 orchestrator_agent/.adk/*
 orchestrator_agent/.adk/session.db
@@ -31,3 +31,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+.idea
+node_modules/
+package-lock.json
+package.json
