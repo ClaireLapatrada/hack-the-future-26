@@ -413,7 +413,7 @@ def submit_mitigation_for_approval(
     severity: str = "HIGH",
     context_summary: str = "",
     scenario_name: str = "",
-    incremental_cost_usd: float = 0,
+    incremental_cost_usd: float = 0.0,
 ) -> dict:
     """
     Submit a mitigation recommendation for human approval. When the agent has

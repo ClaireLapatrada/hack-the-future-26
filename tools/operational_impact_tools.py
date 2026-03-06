@@ -13,6 +13,7 @@ Output: Production downtime probability (%), affected production lines, estimate
 import json
 import random
 from pathlib import Path
+from typing import Optional
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
@@ -47,8 +48,8 @@ def _load_active_disruption():
 
 
 def get_operational_impact(
-    affected_supplier_id: str | None = None,
-    disruption_days_assumed: int | None = None,
+    affected_supplier_id: Optional[str] = None,
+    disruption_days_assumed: Optional[int] = None,
     simulation_runs: int = 500,
 ) -> dict:
     """

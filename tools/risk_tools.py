@@ -25,6 +25,7 @@ If the env vars are not set, the tools fall back to the bundled mock files.
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
@@ -334,10 +335,10 @@ def _load_active_disruption() -> dict:
 def get_disruption_probability(
     supplier_id: str,
     time_horizon_days: int = 30,
-    news_signals_json: str | None = None,
-    climate_alerts_json: str | None = None,
-    shipping_lane_status_json: str | None = None,
-    supplier_health_json: str | None = None,
+    news_signals_json: Optional[str] = None,
+    climate_alerts_json: Optional[str] = None,
+    shipping_lane_status_json: Optional[str] = None,
+    supplier_health_json: Optional[str] = None,
 ) -> dict:
     """
     Disruption probability scoring per Risk Intelligence Engine guideline.
@@ -554,7 +555,7 @@ def get_disruption_probability(
     }
 
 
-def estimate_revenue_at_risk_executive(operational_impact_json: str | None = None) -> dict:
+def estimate_revenue_at_risk_executive(operational_impact_json: Optional[str] = None) -> dict:
     """
     Revenue-at-risk estimation for executives. Quantifies financial exposure from operational disruption.
 
