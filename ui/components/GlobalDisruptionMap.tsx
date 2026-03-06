@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ComposableMap, Geographies, Geography, Line, Marker, ZoomableGroup } from "react-simple-maps";
 import planningConfig from "../../planning_config.json";
@@ -176,7 +176,7 @@ export function GlobalDisruptionMap({
           projectionConfig={{ scale: 140 }}
           style={{ width: "100%", height: "100%", outline: "none" }}
           tabIndex={-1}
-          onMouseDown={(e) => {
+          onMouseDown={(e: React.MouseEvent<HTMLElement>) => {
             // prevent browser focus ring / blue box when clicking map background
             e.preventDefault();
           }}
@@ -189,7 +189,7 @@ export function GlobalDisruptionMap({
           >
             <Geographies geography={geoUrl}>
               {({ geographies }) =>
-                geographies.map((geo) => (
+                (geographies as Array<{ rsmKey: string; [key: string]: unknown }>).map((geo) => (
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
