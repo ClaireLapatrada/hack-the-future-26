@@ -23,7 +23,6 @@ If the env vars are not set, the tools fall back to the bundled mock files.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -35,6 +34,7 @@ from backend.models.tool_results import (
     SlaBreachResult,
     SupplierExposureResult,
 )
+from tools._data import _load_erp, _load_profile
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
@@ -75,34 +75,6 @@ def _load_risk_model():
         return _cached_risk_model, _cached_risk_meta
     except Exception:
         return None, None
-
-
-def _load_erp() -> dict:
-    """
-    Load ERP snapshot.
-
-    Order of precedence:
-    1) ERP_JSON_PATH env var (if set)
-    2) data/mock_erp.json (repo default)
-    """
-    env_path = os.getenv("ERP_JSON_PATH")
-    path = Path(env_path) if env_path else DATA_DIR / "mock_erp.json"
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _load_profile() -> dict:
-    """
-    Load manufacturer profile.
-
-    Order of precedence:
-    1) MANUFACTURER_PROFILE_PATH env var (if set)
-    2) config/manufacturer_profile.json (repo default)
-    """
-    env_path = os.getenv("MANUFACTURER_PROFILE_PATH")
-    path = Path(env_path) if env_path else CONFIG_DIR / "manufacturer_profile.json"
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def calculate_revenue_at_risk(

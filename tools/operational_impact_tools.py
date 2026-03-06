@@ -10,43 +10,11 @@ Output: Production downtime probability (%), affected production lines, estimate
         critical component dependencies.
 """
 
-import json
 import random
-from pathlib import Path
 from typing import Optional
 
 from backend.models.tool_results import OperationalImpactResult
-
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-
-def _load_profile():
-    import os
-    env_path = os.getenv("MANUFACTURER_PROFILE_PATH")
-    path = Path(env_path) if env_path else CONFIG_DIR / "manufacturer_profile.json"
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _load_erp():
-    import os
-    env_path = os.getenv("ERP_JSON_PATH")
-    path = Path(env_path) if env_path else DATA_DIR / "mock_erp.json"
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _load_active_disruption():
-    for p in [CONFIG_DIR / "active_disruption.json", PROJECT_ROOT / "config" / "active_disruption.json"]:
-        if p.exists():
-            try:
-                with open(p, encoding="utf-8") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, OSError):
-                continue
-    return {"active": False, "shipping_lanes": {}}
+from tools._data import _load_erp, _load_profile, _load_active_disruption
 
 
 def get_operational_impact(

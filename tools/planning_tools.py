@@ -27,6 +27,7 @@ from backend.models.tool_results import (
     ScenarioSimulationResult,
     SupplierReallocationResult,
 )
+from tools._data import _load_erp, _load_profile
 
 # Load config once at import
 _ENV_CONFIG_PATH = os.getenv("PLANNING_CONFIG_PATH")
@@ -35,8 +36,29 @@ _CONFIG_PATH = (
     if _ENV_CONFIG_PATH
     else Path(__file__).resolve().parent.parent / "planning_config.json"
 )
-with open(_CONFIG_PATH, encoding="utf-8") as _f:
-    _CONFIG = json.load(_f)
+try:
+    with open(_CONFIG_PATH, encoding="utf-8") as _f:
+        _CONFIG = json.load(_f)
+except (FileNotFoundError, OSError):
+    _CONFIG = {}
+
+
+def _reload_config() -> None:
+    """Re-read planning_config.json into module-level globals (useful after hot-reloads or test fixtures)."""
+    global _CONFIG, SCENARIOS, ALTERNATIVE_SUPPLIERS, AIRFREIGHT_RATES, AIRFREIGHT_DEFAULTS
+    global RISK_WEIGHTS, SERVICE_LEVEL_SCORES, RANK_SERVICE_SCORES
+    try:
+        with open(_CONFIG_PATH, encoding="utf-8") as _f:
+            _CONFIG = json.load(_f)
+    except (FileNotFoundError, OSError):
+        _CONFIG = {}
+    SCENARIOS = _CONFIG.get("scenario_definitions", {})
+    ALTERNATIVE_SUPPLIERS = _CONFIG.get("alternative_suppliers", {})
+    AIRFREIGHT_RATES = _CONFIG.get("airfreight_rates", {})
+    AIRFREIGHT_DEFAULTS = _CONFIG.get("airfreight_defaults", {"default_rate_per_kg": 9.0, "default_transit_days": 5, "handling_fee_usd": 1500, "customs_pct": 0.03})
+    RISK_WEIGHTS = _CONFIG.get("risk_appetite_weights", {"low": {"service": 0.6, "cost": 0.25, "speed": 0.15}, "medium": {"service": 0.45, "cost": 0.35, "speed": 0.2}, "high": {"service": 0.3, "cost": 0.45, "speed": 0.25}})
+    SERVICE_LEVEL_SCORES = _CONFIG.get("service_level_scores", {"High": 90, "Medium": 60, "Low": 30})
+    RANK_SERVICE_SCORES = _CONFIG.get("rank_service_scores", {"High": 100, "Medium": 60, "Low": 20})
 
 SCENARIOS = _CONFIG.get("scenario_definitions", {})
 ALTERNATIVE_SUPPLIERS = _CONFIG.get("alternative_suppliers", {})
@@ -49,20 +71,6 @@ RANK_SERVICE_SCORES = _CONFIG.get("rank_service_scores", {"High": 100, "Medium":
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 PLANNING_DOCUMENTS_PATH = DATA_DIR / "planning_documents.json"
-
-
-def _load_profile() -> dict:
-    env_path = os.getenv("MANUFACTURER_PROFILE_PATH")
-    path = Path(env_path) if env_path else CONFIG_DIR / "manufacturer_profile.json"
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _load_erp() -> dict:
-    env_path = os.getenv("ERP_JSON_PATH")
-    path = Path(env_path) if env_path else DATA_DIR / "mock_erp.json"
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
 
 
 # ---------- Scenario simulation (cost vs service trade-offs) ----------

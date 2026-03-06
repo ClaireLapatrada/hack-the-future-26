@@ -11,6 +11,7 @@ Optional: set RATE_LIMIT_RPM in env (e.g. 8) to cap requests per minute; see too
 
 import json
 import os
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -81,6 +82,7 @@ _ACTION_TOOL_CATEGORIES = {
 _ALLOWED_TYPES = ("OBSERVE", "ACTION", "RESULT", "REASON", "REASONING", "PLANNING", "MEMORY", "TOOL")
 
 _entries: list[dict] = []
+_entries_lock = threading.Lock()
 
 
 def _time_str() -> str:
@@ -94,12 +96,14 @@ def load_entries() -> list[dict]:
         try:
             with open(STREAM_LOG_PATH, encoding="utf-8") as f:
                 data = json.load(f)
-            _entries = data if isinstance(data, list) else []
+            loaded = data if isinstance(data, list) else []
         except (json.JSONDecodeError, OSError):
-            _entries = []
+            loaded = []
     else:
-        _entries = []
-    return _entries
+        loaded = []
+    with _entries_lock:
+        _entries = loaded
+    return list(_entries)
 
 
 def append_entry(
@@ -132,26 +136,31 @@ def append_entry(
     if detail is not None:
         # Keep detail reasonably sized; UI shows it on demand.
         entry["detail"] = detail[:8000]
-    _entries.append(entry)
+    with _entries_lock:
+        _entries.append(entry)
 
 
 def flush() -> None:
     """Write in-memory entries to the JSON file."""
     STREAM_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with _entries_lock:
+        snapshot = list(_entries)
     with open(STREAM_LOG_PATH, "w", encoding="utf-8") as f:
-        json.dump(_entries, f, indent=2)
+        json.dump(snapshot, f, indent=2)
 
 
 def clear() -> None:
     """Clear in-memory log and overwrite file with empty list."""
     global _entries
-    _entries = []
+    with _entries_lock:
+        _entries = []
     flush()
 
 
 def get_entries() -> list[dict]:
     """Return current in-memory entries (no file read)."""
-    return list(_entries)
+    with _entries_lock:
+        return list(_entries)
 
 
 def with_reasoning_log(func):
