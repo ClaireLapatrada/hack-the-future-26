@@ -12,6 +12,12 @@ export type StreamEntry = {
   time: string;
   content: string;
   confidence?: string;
+  /** PO adjustment, escalation, or workflow integration (one-stop mitigation) */
+  category?: "po_adjustment" | "escalation" | "workflow_integration";
+  /** When present, show "View document" link to planning document */
+  meta?: { documentId?: string };
+  /** Optional detailed view: pretty-printed tool result or calculation breakdown */
+  detail?: string;
 };
 
 function AgentReasoningIcon({ className }: { className?: string }) {
@@ -91,16 +97,59 @@ const STREAM_TYPE_CONFIG = {
   TOOL: { Icon: StreamToolIcon, colorClass: "text-textMuted", label: "TOOL" },
 } as const;
 
+/** Category labels for PO adjustment, escalation, workflow integration (one-stop mitigation) */
+const STREAM_CATEGORY_LABELS: Record<string, { label: string; title: string }> = {
+  po_adjustment: {
+    label: "PO / Restock",
+    title: "Purchase order adjustment: monitor inventory, suggest restocks, execute after approval; small restocks can auto-execute.",
+  },
+  escalation: {
+    label: "Escalation",
+    title: "Automatically escalate to higher management; see Decision transparency.",
+  },
+  workflow_integration: {
+    label: "Workflow",
+    title: "One-stop mitigation: client software, company stance, sustainability, financial, legal, SCM inputs.",
+  },
+};
+
 const TOOL_LIKE_TYPES = ["TOOL", "OBSERVE", "REASONING", "PLANNING", "ACTION", "MEMORY"] as const;
 
-/** Collapse tool-domain + RESULT pairs into one entry with resultStatus; drop standalone RESULTs. */
+/** Simple typewriter effect for a single line of text. */
+function useTypewriter(text: string, enabled: boolean, speedMs: number = 18): string {
+  const [display, setDisplay] = useState<string>(enabled ? "" : text);
+
+  useEffect(() => {
+    if (!enabled) {
+      setDisplay(text);
+      return;
+    }
+    setDisplay("");
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setDisplay(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(id);
+      }
+    }, speedMs);
+    return () => clearInterval(id);
+  }, [text, enabled, speedMs]);
+
+  return display;
+}
+
+/** Collapse tool-domain + RESULT pairs into one entry with resultStatus and detail; drop standalone RESULTs. */
 type DisplayEntry = StreamEntry & { resultStatus?: "success" | "error" | string };
 
 function collapseToolResultPairs(entries: StreamEntry[]): DisplayEntry[] {
   const out: DisplayEntry[] = [];
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
-    const isToolLike = TOOL_LIKE_TYPES.some((t) => t === e.type);
+    const raw = e.content?.trim() ?? "";
+    // Only treat as tool-call if type is tool-domain AND content looks like tools.module.fn(...)
+    const isToolLike =
+      TOOL_LIKE_TYPES.some((t) => t === e.type) && /^tools\.\w+\.\w+\(/.test(raw);
     if (isToolLike) {
       const next = entries[i + 1];
       if (next?.type === "RESULT") {
@@ -109,6 +158,8 @@ function collapseToolResultPairs(entries: StreamEntry[]): DisplayEntry[] {
           ...e,
           resultStatus:
             r === "success" ? "success" : r === "error" ? "error" : next.content.trim(),
+          ...(next.meta && typeof next.meta === "object" && { meta: next.meta }),
+          ...(typeof (next as any).detail === "string" && { detail: (next as any).detail }),
         });
         i++;
       } else {
@@ -172,6 +223,12 @@ function formatStreamContent(entry: StreamEntry): string {
         return `Fetching alternative ${arg("category") ?? "suppliers"}${arg("exclude_regions") ? ` (excluding ${arg("exclude_regions")})` : ""}.`;
       case "rank_scenarios":
         return "Ranking mitigation scenarios by risk appetite.";
+      case "run_scenario_simulation":
+        return `Running scenario simulation (${num("monte_carlo_runs") ?? "?"} runs, risk appetite: ${arg("risk_appetite") ?? "medium"}).`;
+      case "optimize_supplier_reallocation":
+        return `Optimizing supplier reallocation${arg("demand_units") ? ` (${arg("demand_units")} units)` : ""}.`;
+      case "recommend_buffer_stock":
+        return `Recommending buffer stock for ${arg("item_id") ?? "item"} (service level: ${arg("service_level_target_pct") ?? "95"}%).`;
       case "send_slack_alert":
         return `Sending Slack alert to ${arg("channel") ?? "channel"} (${arg("severity") ?? "alert"}).`;
       case "draft_supplier_email":
@@ -180,6 +237,22 @@ function formatStreamContent(entry: StreamEntry): string {
         return `Flagging ERP adjustment for ${arg("item_id") ?? "item"} (${arg("adjustment_type")?.replace(/_/g, " ") ?? "update"}).`;
       case "generate_executive_summary":
         return "Generating executive summary.";
+      case "submit_mitigation_for_approval":
+        return `Submitting mitigation for approval: ${arg("title") ?? "recommendation"}.`;
+      case "get_po_adjustment_suggestions":
+        return "Checking inventory and suggesting restock orders (PO adjustments).";
+      case "submit_restock_for_approval":
+        return `Submitting restock for approval: ${arg("item_id") ?? "item"} (${num("suggested_quantity") ?? "?"} units).`;
+      case "execute_approved_restock":
+        return `Executing approved restock (${arg("approval_id") ?? "approval"}).`;
+      case "escalate_to_management":
+        return `Escalating to management: ${arg("trigger_reason") ?? "trigger"} (${arg("severity") ?? "severity"}).`;
+      case "get_client_context":
+        return "Loading client context (stance, sustainability, financial, legal, SCM).";
+      case "get_workflow_integration_status":
+        return "Checking workflow integrations (ERP, Slack, email, WMS, TMS).";
+      case "create_planning_document":
+        return `Creating planning document: ${arg("title") ?? "Mitigation plan"}.`;
       case "log_disruption_event":
         return `Logging disruption event (${arg("region") ?? "region"}, ${arg("severity") ?? "severity"}).`;
       default:
@@ -216,12 +289,20 @@ export function AgentReasoningStream({
   liveLabel?: string;
   maxEntries?: number;
 }) {
-  const collapsed = collapseToolResultPairs(entries);
-  // API already returns newest first; keep that order (new at top, old at bottom)
+  // API returns newest-first. For correct TOOL+RESULT pairing, collapse on chronological order,
+  // then reverse back to newest-first for display.
+  const chronological = [...entries].reverse();
+  const collapsedChronological = collapseToolResultPairs(chronological);
+  const collapsed = collapsedChronological.reverse();
+  // Keep newest at top, oldest at bottom
   const fullList =
     typeof maxEntries === "number" && maxEntries > 0
       ? collapsed.slice(0, maxEntries)
       : collapsed;
+
+  const newestEntry = fullList[0];
+  const newestFormatted = newestEntry ? formatStreamContent(newestEntry) : "";
+  const typewriterText = useTypewriter(newestFormatted, !!newestEntry);
 
   const [revealCount, setRevealCount] = useState(0);
   const prevLengthRef = useRef(0);
@@ -248,22 +329,20 @@ export function AgentReasoningStream({
 
   const visibleEntries = fullList.slice(0, revealCount);
 
-  const hasPlanning = fullList.some((e) => e.type === "PLANNING");
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  /** Show approval link inside the TOOL entry that submitted for approval, not at top. */
+  function isApprovalSubmission(entry: StreamEntry): boolean {
+    if (entry.type !== "TOOL" && entry.type !== "ACTION") return false;
+    return (
+      entry.content.includes("submit_mitigation_for_approval") ||
+      entry.content.includes("submit_restock_for_approval")
+    );
+  }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {hasPlanning && (
-        <div className="mb-2 flex justify-end">
-          <Link
-            href="/approvals"
-            className="inline-flex items-center gap-2 rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 font-mono text-xs font-medium text-accent hover:bg-accent/20"
-          >
-            <StreamPlanningIcon className="h-4 w-4" />
-            Review approvals
-          </Link>
-        </div>
-      )}
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-2">
         {visibleEntries.map((entry, i) => {
           const config = STREAM_TYPE_CONFIG[entry.type as keyof typeof STREAM_TYPE_CONFIG] ?? STREAM_TYPE_CONFIG.TOOL;
           const Icon = config.Icon;
@@ -271,6 +350,11 @@ export function AgentReasoningStream({
           const status = displayEntry.resultStatus;
           const statusDisplay = status ? resultStatusLabel(status) : null;
           const isNew = i === 0;
+          const showApprovalInEntry = isApprovalSubmission(entry);
+          const hasDetail = typeof displayEntry.detail === "string" && displayEntry.detail.length > 0;
+          const isDetailExpanded = expandedIndex === i;
+          const formatted = formatStreamContent(entry);
+          const textToShow = isNew && !hasDetail ? typewriterText : formatted;
           return (
             <div
               key={`stream-${i}`}
@@ -279,11 +363,19 @@ export function AgentReasoningStream({
               }`}
             >
               <div className="mb-1 flex flex-col gap-0.5 text-[11px]">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Icon className={`h-4 w-4 shrink-0 ${config.colorClass}`} />
                   <span className={`font-medium uppercase ${config.colorClass}`}>
                     {config.label}
                   </span>
+                  {"category" in entry && entry.category && STREAM_CATEGORY_LABELS[entry.category] && (
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[9px] font-medium uppercase bg-white/10 text-textMuted"
+                      title={STREAM_CATEGORY_LABELS[entry.category].title}
+                    >
+                      {STREAM_CATEGORY_LABELS[entry.category].label}
+                    </span>
+                  )}
                   {statusDisplay && (
                     <span className={`ml-1 text-[10px] ${statusDisplay.className}`}>
                       — {statusDisplay.text}
@@ -296,8 +388,46 @@ export function AgentReasoningStream({
                 <span className="text-[10px] text-textMuted">{entry.time}</span>
               </div>
               <p className="text-[11px] text-textPrimary">
-                {formatStreamContent(entry)}
+                {textToShow}
               </p>
+              {hasDetail && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedIndex(isDetailExpanded ? null : i)}
+                    className="text-[10px] font-mono text-agentCyan hover:text-agentCyan/80"
+                  >
+                    {isDetailExpanded ? "Hide details" : "Show details"}
+                  </button>
+                  {isDetailExpanded && (
+                    <pre className="mt-1 max-h-56 overflow-y-auto rounded bg-black/40 p-2 text-[10px] text-left text-textMuted whitespace-pre-wrap">
+                      {displayEntry.detail}
+                    </pre>
+                  )}
+                </div>
+              )}
+              {showApprovalInEntry && (
+                <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
+                  <Link
+                    href="/approvals"
+                    className="inline-flex items-center gap-1.5 rounded border border-accent/50 bg-accent/10 px-2 py-1.5 font-mono text-[10px] font-medium text-accent hover:bg-accent/20"
+                  >
+                    <StreamPlanningIcon className="h-3.5 w-3.5" />
+                    Review approvals
+                  </Link>
+                </div>
+              )}
+              {displayEntry.meta?.documentId && (
+                <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
+                  <Link
+                    href={`/planning-documents/${displayEntry.meta.documentId}`}
+                    className="inline-flex items-center gap-1.5 rounded border border-agentCyan/50 bg-agentCyan/10 px-2 py-1.5 font-mono text-[10px] font-medium text-agentCyan hover:bg-agentCyan/20"
+                  >
+                    <StreamPlanningIcon className="h-3.5 w-3.5" />
+                    View document
+                  </Link>
+                </div>
+              )}
             </div>
           );
         })}

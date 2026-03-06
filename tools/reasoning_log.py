@@ -38,8 +38,19 @@ _TOOL_MODULE_TO_TYPE = {
     "perception_tools": "OBSERVE",
     "risk_tools": "REASONING",
     "planning_tools": "PLANNING",
+    "operational_impact_tools": "REASONING",
     "action_tools": "ACTION",
     "memory_tools": "MEMORY",
+}
+
+# Action tool categories for stream UI: PO adjustment, escalation, workflow integration (one-stop mitigation)
+_ACTION_TOOL_CATEGORIES = {
+    "get_po_adjustment_suggestions": "po_adjustment",
+    "submit_restock_for_approval": "po_adjustment",
+    "execute_approved_restock": "po_adjustment",
+    "escalate_to_management": "escalation",
+    "get_client_context": "workflow_integration",
+    "get_workflow_integration_status": "workflow_integration",
 }
 
 _ALLOWED_TYPES = ("OBSERVE", "ACTION", "RESULT", "REASON", "REASONING", "PLANNING", "MEMORY", "TOOL")
@@ -71,8 +82,14 @@ def append_entry(
     content: str,
     time_str: Optional[str] = None,
     confidence: Optional[str] = None,
+    category: Optional[str] = None,
+    meta: Optional[dict] = None,
+    detail: Optional[str] = None,
 ) -> None:
-    """Append one entry to the stream log. Types: OBSERVE, ACTION, RESULT, REASON, REASONING, PLANNING, MEMORY, TOOL."""
+    """Append one entry to the stream log. Types: OBSERVE, ACTION, RESULT, REASON, REASONING, PLANNING, MEMORY, TOOL.
+    category: optional 'po_adjustment' | 'escalation' | 'workflow_integration' for action stream labels.
+    meta: optional dict e.g. {"documentId": "PLAN-xxx"} for planning document link in stream.
+    detail: optional long-form detail (e.g. pretty-printed tool result or calculation breakdown) shown on expand in UI."""
     global _entries
     if entry_type not in _ALLOWED_TYPES:
         entry_type = "OBSERVE"
@@ -83,6 +100,13 @@ def append_entry(
     }
     if confidence is not None:
         entry["confidence"] = str(confidence)
+    if category is not None:
+        entry["category"] = str(category)
+    if meta is not None and isinstance(meta, dict):
+        entry["meta"] = meta
+    if detail is not None:
+        # Keep detail reasonably sized; UI shows it on demand.
+        entry["detail"] = detail[:8000]
     _entries.append(entry)
 
 
@@ -124,7 +148,8 @@ def with_reasoning_log(func):
         # Map module to domain tag (perception→OBSERVE, risk→REASONING, etc.)
         module_name = (func.__module__ or "").split(".")[-1] if func.__module__ else ""
         log_type = _TOOL_MODULE_TO_TYPE.get(module_name, "TOOL")
-        append_entry(log_type, tool_call)
+        category = _ACTION_TOOL_CATEGORIES.get(func.__name__) if log_type == "ACTION" else None
+        append_entry(log_type, tool_call, category=category)
         flush()
         try:
             result = func(*args, **kwargs)
@@ -134,7 +159,18 @@ def with_reasoning_log(func):
                     summary = json.dumps(result)[:400]
             else:
                 summary = str(result)[:400]
-            append_entry("RESULT", summary or "(ok)")
+            res_meta = None
+            if isinstance(result, dict) and result.get("document_id") and func.__name__ == "create_planning_document":
+                res_meta = {"documentId": result["document_id"]}
+            # Attach detailed view of tool result so UI can show how calculations/simulations/ranking were done.
+            detail = None
+            if isinstance(result, dict):
+                try:
+                    detail = json.dumps(result, indent=2)[:8000]
+                except TypeError:
+                    # Fallback if result is not fully JSON-serializable
+                    detail = str(result)[:8000]
+            append_entry("RESULT", summary or "(ok)", category=category, meta=res_meta, detail=detail)
             flush()
             return result
         except Exception as e:

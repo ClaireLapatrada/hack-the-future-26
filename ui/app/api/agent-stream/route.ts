@@ -11,6 +11,9 @@ export type StreamEntry = {
   time: string;
   content: string;
   confidence?: string;
+  category?: string;
+  meta?: { documentId?: string };
+  detail?: string;
 };
 
 function readJson<T>(filename: string): T {
@@ -56,6 +59,9 @@ export async function GET(request: Request) {
         time: typeof e.time === "string" ? e.time : "—",
         content: e.content,
         ...(e.confidence != null && { confidence: String(e.confidence) }),
+        ...(e.category != null && { category: String(e.category) }),
+        ...(e.meta != null && typeof e.meta === "object" && { meta: e.meta }),
+        ...(typeof (e as any).detail === "string" && { detail: (e as any).detail }),
       })) as StreamEntry[];
 
     return NextResponse.json(valid.reverse());

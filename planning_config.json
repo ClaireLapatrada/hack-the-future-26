@@ -137,5 +137,11 @@
     "High": 100,
     "Medium": 60,
     "Low": 20
+  },
+  "buffer_stock_defaults": {
+    "service_level_target_pct": 95,
+    "holding_cost_pct_per_year": 25,
+    "demand_cv": 0.15,
+    "lead_time_std_days": 5
   }
 }
