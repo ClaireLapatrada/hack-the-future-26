@@ -1,9 +1,21 @@
 """
 Risk Intelligence Tools — Maps disruption signals to operational exposure.
 Used by the Risk Intelligence Agent.
+
+By default, these tools read from in-repo mock data:
+- data/mock_erp.json
+- config/manufacturer_profile.json
+
+To feed **real** ERP and manufacturer data without changing code, you can
+point them at your own JSON exports via environment variables:
+- ERP_JSON_PATH: absolute or relative path to an ERP snapshot JSON
+- MANUFACTURER_PROFILE_PATH: path to a manufacturer profile JSON
+
+If the env vars are not set, the tools fall back to the bundled mock files.
 """
 
 import json
+import os
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -11,12 +23,30 @@ CONFIG_DIR = Path(__file__).parent.parent / "config"
 
 
 def _load_erp() -> dict:
-    with open(DATA_DIR / "mock_erp.json") as f:
+    """
+    Load ERP snapshot.
+
+    Order of precedence:
+    1) ERP_JSON_PATH env var (if set)
+    2) data/mock_erp.json (repo default)
+    """
+    env_path = os.getenv("ERP_JSON_PATH")
+    path = Path(env_path) if env_path else DATA_DIR / "mock_erp.json"
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def _load_profile() -> dict:
-    with open(CONFIG_DIR / "manufacturer_profile.json") as f:
+    """
+    Load manufacturer profile.
+
+    Order of precedence:
+    1) MANUFACTURER_PROFILE_PATH env var (if set)
+    2) config/manufacturer_profile.json (repo default)
+    """
+    env_path = os.getenv("MANUFACTURER_PROFILE_PATH")
+    path = Path(env_path) if env_path else CONFIG_DIR / "manufacturer_profile.json"
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

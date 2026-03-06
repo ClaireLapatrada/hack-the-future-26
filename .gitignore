@@ -1,4 +1,22 @@
 venv/
 .env
+.env*
+**/.env
+**/.env*
 .DS_Store
 orchestrator_agent/.adk/*
+ui/node_modules/
+ui/.next/
+ui/.turbo/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/

@@ -12,6 +12,8 @@ will see the disruption (Suez lane disrupted, supplier health degraded).
   Run one detection cycle (with current state: disrupted if you initiated, else operational):
     python scripts/initiate_event.py --run
 
+  On 429 rate limit (Gemini free tier: 5 req/min), the script waits and retries once.
+
   Clear disruption (back to all operational):
     python scripts/initiate_event.py --clear
 
@@ -96,8 +98,21 @@ def clear_disruption() -> None:
     print(f"Config written to {CONFIG_PATH}")
 
 
+def _is_rate_limit_error(e: BaseException) -> bool:
+    s = str(e).upper()
+    return "429" in s or "RESOURCE_EXHAUSTED" in s
+
+
+def _extract_retry_seconds(e: BaseException) -> int:
+    import re
+    m = re.search(r"retry in (\d+(?:\.\d+)?)\s*s", str(e), re.I)
+    if m:
+        return min(120, max(10, int(float(m.group(1)) + 1)))
+    return 55
+
+
 def _run_one_cycle(prompt: str) -> None:
-    """Run one detection cycle using the same runner as run_continuous_detection."""
+    """Run one detection cycle using the same runner as run_continuous_detection. Writes reasoning stream to ui/data/agent_reasoning_stream.json."""
     from contextlib import aclosing
     from google.genai import types
     from google.adk.apps.app import App
@@ -106,8 +121,20 @@ def _run_one_cycle(prompt: str) -> None:
     from google.adk.sessions.in_memory_session_service import InMemorySessionService
     from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
     from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+    from tools.reasoning_log import append_entry, flush, clear as clear_reasoning_log
     import importlib.util
 
+    def _classify(text: str) -> tuple[str, str | None]:
+        t = text.strip().lower()
+        if ("approval" in t and "request" in t) or ("generating" in t and "request" in t):
+            return "ACTION", None
+        if t.startswith("monitoring") or "monitoring " in t or "evaluating " in t:
+            return "OBSERVE", None
+        import re
+        m = re.search(r"(\d{1,3})%", text)
+        return "REASON", f"{m.group(1)}%" if m else None
+
+    clear_reasoning_log()
     agent_path = PROJECT_ROOT / "orchestrator_agent" / "agent.py"
     spec = importlib.util.spec_from_file_location("orchestrator_agent.agent", agent_path)
     mod = importlib.util.module_from_spec(spec)
@@ -136,14 +163,38 @@ def _run_one_cycle(prompt: str) -> None:
         ) as agen:
             async for event in agen:
                 if event.content and event.content.parts:
-                    text = "".join(p.text or "" for p in event.content.parts)
+                    for part in event.content.parts:
+                        text = getattr(part, "text", None)
+                        if text and text.strip():
+                            entry_type, confidence = _classify(text)
+                            append_entry(entry_type, text.strip(), confidence=confidence)
+                            flush()
+                    text = "".join(getattr(p, "text", None) or "" for p in event.content.parts)
                     if text:
                         print(f"[{event.author or 'agent'}]:")
                         print(text)
                         print()
         await runner.close()
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    except Exception as e:
+        if not _is_rate_limit_error(e):
+            raise
+        for attempt in range(1, 4):
+            wait_s = _extract_retry_seconds(e)
+            print(f"[429] Rate limit. Waiting {wait_s}s (retry {attempt}/3)...", file=sys.stderr)
+            import time
+            time.sleep(wait_s)
+            try:
+                asyncio.run(_run())
+                return
+            except Exception as e2:
+                e = e2
+                if not _is_rate_limit_error(e2):
+                    raise
+        print(f"[error] Still rate limited after 3 retries. Wait 1 min or enable billing.", file=sys.stderr)
+        raise
 
 
 def main():

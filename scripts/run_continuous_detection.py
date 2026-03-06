@@ -8,9 +8,8 @@ Run from project root:
   python scripts/run_continuous_detection.py
   python scripts/run_continuous_detection.py --interval 300   # 5 min
 
-Uses the same orchestrator agent and tools as `adk run orchestrator_agent`;
-env vars (GOOGLE_API_KEY, etc.) are loaded from orchestrator_agent/.env and
-the project root.
+Gemini: default model is gemini-3.1-flash-lite-preview. Set GEMINI_MODEL to override. We retry up to 10
+times on 429. Use --interval 120 or higher; or set GEMINI_MODEL and enable billing.
 """
 
 import argparse
@@ -41,6 +40,8 @@ from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 
+from tools.reasoning_log import append_entry, flush, clear as clear_reasoning_log
+
 
 # Default prompt for each detection cycle
 DEFAULT_PROMPT = (
@@ -66,11 +67,32 @@ def _load_agent():
     return getattr(mod, "root_agent")
 
 
+def _classify_model_text(text: str) -> tuple[str, str | None]:
+    """Return (entry_type, confidence). Types: OBSERVE, ACTION, REASON."""
+    t = text.strip().lower()
+    if ("approval" in t and "request" in t) or ("generating" in t and "request" in t):
+        return "ACTION", None
+    if t.startswith("monitoring") or "monitoring " in t or "evaluating " in t:
+        return "OBSERVE", None
+    # Optional: extract confidence like "87%" for REASON
+    import re
+    m = re.search(r"(\d{1,3})%", text)
+    conf = f"{m.group(1)}%" if m else None
+    return "REASON", conf
+
+
 def _print_event(event):
-    """Print agent response text from an event."""
+    """Print agent response text from an event and append to reasoning log for UI."""
     if not event.content or not event.content.parts:
         return
-    text_parts = [p.text for p in event.content.parts if p.text]
+    for part in event.content.parts:
+        text = getattr(part, "text", None)
+        if not text or not text.strip():
+            continue
+        entry_type, confidence = _classify_model_text(text)
+        append_entry(entry_type, text.strip(), confidence=confidence)
+        flush()
+    text_parts = [p.text for p in event.content.parts if getattr(p, "text", None)]
     if not text_parts:
         return
     author = event.author or "supply_chain_orchestrator"
@@ -79,8 +101,44 @@ def _print_event(event):
     print()
 
 
+def _is_rate_limit_error(e: BaseException) -> bool:
+    s = str(e).upper()
+    return "429" in s or "RESOURCE_EXHAUSTED" in s
+
+
+def _extract_retry_seconds(e: BaseException) -> int:
+    """Parse 'Please retry in 53.18s' from error message; default 55."""
+    import re
+    m = re.search(r"retry in (\d+(?:\.\d+)?)\s*s", str(e), re.I)
+    if m:
+        return min(120, max(10, int(float(m.group(1)) + 1)))
+    return 55
+
+
+async def _retry_cycle(runner, session, prompt: str, max_retries: int = 3) -> None:
+    """Run one cycle; on 429 wait and retry up to max_retries times."""
+    last_e = None
+    for attempt in range(max_retries + 1):
+        try:
+            if attempt > 0 and last_e:
+                wait_s = _extract_retry_seconds(last_e)
+                print(f"[429] Rate limit. Waiting {wait_s}s (attempt {attempt + 1}/{max_retries + 1})...", file=sys.stderr)
+                await asyncio.sleep(wait_s)
+            await run_one_cycle(runner, session, prompt)
+            return
+        except Exception as e:
+            last_e = e
+            if not _is_rate_limit_error(e):
+                print(f"[error] {e}", file=sys.stderr)
+                return
+    if last_e:
+        print(f"[error] Still rate limited after {max_retries + 1} attempts. Try --interval 120 or enable billing.", file=sys.stderr)
+        print(f"  {last_e}", file=sys.stderr)
+
+
 async def run_one_cycle(runner, session, prompt: str) -> None:
-    """Send one message to the agent and print all response events."""
+    """Send one message to the agent and print all response events. Writes reasoning stream to ui/data/agent_reasoning_stream.json for the UI."""
+    clear_reasoning_log()
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     async with aclosing(
         runner.run_async(
@@ -93,7 +151,7 @@ async def run_one_cycle(runner, session, prompt: str) -> None:
             _print_event(event)
 
 
-async def main_async(interval_seconds: int, prompt: str) -> None:
+async def main_async(interval_seconds: int, prompt: str, max_retries: int = 10) -> None:
     agent = _load_agent()
     app = App(name="orchestrator_agent", root_agent=agent)
     session_service = InMemorySessionService()
@@ -116,9 +174,10 @@ async def main_async(interval_seconds: int, prompt: str) -> None:
             print(f"Detection cycle {cycle}")
             print(f"{'='*60}\n")
             try:
-                await run_one_cycle(runner, session, prompt)
+                await _retry_cycle(runner, session, prompt, max_retries=max_retries)
             except Exception as e:
-                print(f"[error] {e}", file=sys.stderr)
+                if not _is_rate_limit_error(e):
+                    print(f"[error] {e}", file=sys.stderr)
             if interval_seconds <= 0:
                 break
             print(f"\nNext run in {interval_seconds}s (Ctrl+C to stop)...\n")
@@ -134,8 +193,14 @@ def main():
     parser.add_argument(
         "--interval",
         type=int,
-        default=300,
-        help="Seconds between detection runs (default 300). Use 0 to run once and exit.",
+        default=120,
+        help="Seconds between detection runs (default 120 for free tier). Use 0 to run once and exit.",
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=10,
+        help="Max retries on 429 per cycle (default 10; use with gemini-2.5-flash-lite 10 rpm).",
     )
     parser.add_argument(
         "--prompt",
@@ -144,7 +209,7 @@ def main():
         help="Prompt to send each cycle (default: full pipeline check).",
     )
     args = parser.parse_args()
-    asyncio.run(main_async(interval_seconds=args.interval, prompt=args.prompt))
+    asyncio.run(main_async(interval_seconds=args.interval, prompt=args.prompt, max_retries=args.retries))
 
 
 if __name__ == "__main__":

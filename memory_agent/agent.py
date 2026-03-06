@@ -70,7 +70,7 @@ Other agents will use this to make better decisions.
 """
 
 memory_agent = Agent(
-    model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="memory_learning_agent",
     description=(
         "Maintains institutional memory of past supply chain disruptions. "

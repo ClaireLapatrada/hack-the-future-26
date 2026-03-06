@@ -71,7 +71,7 @@ Be organized. List each action separately with clear status.
 """
 
 action_agent = Agent(
-    model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="action_execution_agent",
     description=(
         "Executes operational actions based on approved mitigation plans. "

@@ -35,6 +35,16 @@ def _call_google_custom_search(query: str, num: int = 10) -> dict | None:
     params = {"key": api_key, "cx": cx, "q": query, "num": min(num, 10)}
     try:
         r = requests.get(url, params=params, timeout=15)
+        if r.status_code == 403:
+            return {
+                "error": (
+                    "403 Forbidden. Common causes: (1) Custom Search API not enabled — enable it in "
+                    "Google Cloud Console → APIs & Services → enable 'Custom Search API'. "
+                    "(2) API key restrictions — if the key is restricted to 'HTTP referrers', it will not work "
+                    "from scripts; use 'None' or 'IP addresses' for server/CLI. (3) Billing — ensure the project "
+                    "has billing enabled if required. Check https://console.cloud.google.com/apis/library/customsearch.googleapis.com"
+                )
+            }
         r.raise_for_status()
         return r.json()
     except (requests.RequestException, ValueError) as e:
@@ -129,23 +139,65 @@ def _operational_status() -> dict:
 def get_shipping_lane_status(lane: str) -> dict:
     """
     Get current operational status of a shipping lane.
-    Reads config/active_disruption.json: when active is false, all lanes are OPERATIONAL
-    until you run scripts/initiate_event.py to set a disruption.
-    In production: wraps Project44 or Flexport API.
-
-    Args:
-        lane: Lane name e.g. "Asia-Europe (Suez)" or "Trans-Pacific"
+    When config/active_disruption.json has active=true and this lane is marked DISRUPTED there
+    (e.g. after running scripts/initiate_event.py), returns that status so the agent and UI see the event.
+    Otherwise uses real-world signals: search_disruption_news for the lane; if articles found, reports DISRUPTED.
     """
     state = _load_active_disruption()
-    if not state.get("active"):
+    if state.get("active") and state.get("shipping_lanes"):
+        lane_data = state["shipping_lanes"].get(lane)
+        if lane_data and lane_data.get("status") == "DISRUPTED":
+            status = {
+                "status": "DISRUPTED",
+                "severity": lane_data.get("severity", "High"),
+                "avg_delay_days": lane_data.get("avg_delay_days", 14),
+                "reroute_available": lane_data.get("reroute_available", True),
+                "reroute_via": lane_data.get("reroute_via"),
+                "reroute_additional_days": lane_data.get("reroute_additional_days", 0),
+                "carrier_surcharges_usd_per_teu": lane_data.get("carrier_surcharges_usd_per_teu", 0),
+                "vessels_affected_pct": lane_data.get("vessels_affected_pct", 0),
+                "last_updated": datetime.now().isoformat(),
+                "source": "Initiated (demo)",
+            }
+            return {"status": "success", "lane": lane, "lane_status": status}
+    query = f'"{lane}" shipping disruption'
+    result = search_disruption_news(query)
+    if result.get("status") != "success":
         status = _operational_status()
         return {"status": "success", "lane": lane, "lane_status": status}
-    overrides = state.get("shipping_lanes") or {}
-    if lane in overrides:
-        status = dict(overrides[lane])
-        status.setdefault("last_updated", datetime.now().isoformat())
+    signals = result.get("signals") or []
+    articles_found = result.get("articles_found", 0)
+    if articles_found == 0 or not signals:
+        status = _operational_status()
         return {"status": "success", "lane": lane, "lane_status": status}
-    status = _operational_status()
+    # Infer disruption from search results
+    text = " ".join((s.get("title") or "") + " " + (s.get("summary") or "") for s in signals[:5]).lower()
+    severity = "Low"
+    if any(k in text for k in ("blockade", "closed", "halt", "critical", "crisis")):
+        severity = "High"
+    if any(k in text for k in ("suez", "red sea", "panama", "canal")):
+        severity = "High"
+    if "day" in text or "delay" in text:
+        try:
+            m = re.search(r"(\d+)\s*day", text)
+            delay_days = int(m.group(1)) if m else 10
+        except (ValueError, AttributeError, TypeError):
+            delay_days = 10
+    else:
+        delay_days = 7
+    status = {
+        "status": "DISRUPTED",
+        "severity": severity,
+        "avg_delay_days": min(delay_days, 30),
+        "reroute_available": "cape" in text or "reroute" in text,
+        "reroute_via": "Cape of Good Hope" if "cape" in text else None,
+        "reroute_additional_days": 14 if "cape" in text else 0,
+        "carrier_surcharges_usd_per_teu": 0,
+        "vessels_affected_pct": 0,
+        "last_updated": datetime.now().isoformat(),
+        "source": "Google Search",
+        "articles_found": articles_found,
+    }
     return {"status": "success", "lane": lane, "lane_status": status}
 
 
@@ -324,7 +376,7 @@ Example format:
 """
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
             contents=prompt,
         )
         text = getattr(response, "text", None) or ""

@@ -64,7 +64,7 @@ If a signal is HIGH or CRITICAL severity, flag it explicitly for immediate escal
 """
 
 perception_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="perception_agent",
     description=(
         "Monitors global disruption signals including shipping lanes, news events, "

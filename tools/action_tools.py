@@ -5,6 +5,10 @@ Used by the Action Execution Agent.
 
 import json
 from datetime import datetime
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PENDING_APPROVALS_PATH = PROJECT_ROOT / "ui" / "data" / "pending_approvals.json"
 
 
 def draft_supplier_email(
@@ -191,6 +195,79 @@ def flag_erp_reorder_adjustment(
         "erp_change": erp_change_record,
         "next_step": "Auto-executed in ERP" if auto_execute else "Awaiting procurement manager approval",
         "mock_note": "In production: submitted via SAP REST API or Oracle Fusion"
+    }
+
+
+def submit_mitigation_for_approval(
+    title: str,
+    recommendation: str,
+    situation: str,
+    severity: str = "HIGH",
+    context_summary: str = "",
+    scenario_name: str = "",
+    incremental_cost_usd: float = 0,
+) -> dict:
+    """
+    Submit a mitigation recommendation for human approval. When the agent has
+    run planning (e.g. rank_scenarios) and identified a mitigation that requires
+    sign-off (e.g. airfreight > $50K, ERP change, supplier email), call this to
+    add it to the approval inbox so the user can accept or reject in the UI.
+
+    Args:
+        title: Short title e.g. "Emergency Airfreight — SEMI-MCU-32"
+        recommendation: Agent recommendation text e.g. "APPROVE — Emergency Airfreight for 1,600 units"
+        situation: Description of the situation and impact
+        severity: "LOW", "MEDIUM", "HIGH", "CRITICAL"
+        context_summary: Optional brief context from risk/perception
+        scenario_name: Optional name from planning e.g. "Emergency Airfreight"
+        incremental_cost_usd: Optional cost from scenario financials
+    """
+    approval_id = f"APPR-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    severity_normalized = severity.upper() if severity else "HIGH"
+    if severity_normalized not in ("LOW", "MEDIUM", "HIGH", "CRITICAL"):
+        severity_normalized = "HIGH"
+
+    audit_log = []
+    if context_summary:
+        audit_log.append({"time": "—", "text": context_summary})
+    if scenario_name or incremental_cost_usd:
+        cost_str = f"${incremental_cost_usd:,.0f}" if incremental_cost_usd else ""
+        audit_log.append({"time": "—", "text": f"Scenario: {scenario_name or 'Mitigation'}. {cost_str}".strip()})
+    audit_log.append({"time": "—", "text": recommendation})
+    if not audit_log:
+        audit_log.append({"time": "—", "text": recommendation})
+
+    entry = {
+        "id": approval_id,
+        "severity": severity_normalized,
+        "title": title,
+        "situation": situation,
+        "recommendation": recommendation,
+        "confidence": "90%",
+        "auditLog": audit_log,
+        "status": "pending",
+        "createdAt": datetime.now().isoformat(),
+    }
+
+    PENDING_APPROVALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if PENDING_APPROVALS_PATH.exists():
+            with open(PENDING_APPROVALS_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            items = data if isinstance(data, list) else []
+        else:
+            items = []
+    except (json.JSONDecodeError, OSError):
+        items = []
+    items.append(entry)
+    with open(PENDING_APPROVALS_PATH, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=2)
+
+    return {
+        "status": "success",
+        "approval_id": approval_id,
+        "message": "Mitigation submitted for human approval; visible in Approval Inbox.",
+        "next_step": "User can approve or reject at /approvals",
     }
 
 
