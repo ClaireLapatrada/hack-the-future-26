@@ -5,6 +5,9 @@ Responsibilities:
 - Draft supplier outreach emails (always human-approved before sending)
 - Send Slack escalation alerts to ops/executive channels
 - Flag ERP reorder/PO adjustments (configurable auto-execute thresholds)
+- Purchase order adjustment suggestions: monitor inventory, suggest restocks for approval; small restocks auto-execute; execute restocks once approved
+- Escalation triggers: automatically escalate certain problems to higher management (see Decision transparency)
+- Workflow integrations: client supply chain software, company stance, sustainability, financial, legal, SCM inputs — one-stop UI
 - Generate executive summary documents for C-suite escalation
 - Log all actions for memory and audit trail
 """
@@ -17,6 +20,13 @@ from tools.action_tools import (
     send_slack_alert,
     flag_erp_reorder_adjustment,
     generate_executive_summary,
+    submit_mitigation_for_approval,
+    get_po_adjustment_suggestions,
+    submit_restock_for_approval,
+    execute_approved_restock,
+    escalate_to_management,
+    get_client_context,
+    get_workflow_integration_status,
 )
 
 ACTION_INSTRUCTION = """
@@ -28,31 +38,62 @@ You receive:
 - The risk assessment from the Risk Intelligence Agent
 - The disruption signal from the Perception Agent
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PURCHASE ORDER ADJUSTMENT SUGGESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Always monitor inventory: call get_po_adjustment_suggestions() to get restock suggestions.
+- Suggest order restocks to human/higher management for approval via submit_restock_for_approval(item_id, suggested_quantity, reason, estimated_cost_usd).
+- Small restocks under the configured threshold (e.g. $15,000) are auto_eligible — can be executed without approval when policy allows.
+- After a restock is approved by a human, call execute_approved_restock(approval_id) to create the PO in the ERP.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ESCALATION TRIGGERS (Decision transparency)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Automatically escalate to higher management when:
+- Financial exposure > $500K (or configured threshold)
+- Severity = CRITICAL
+- SLA breach probability > 70%
+- Inventory runway < 5 days (critical)
+- Spend commitment > $150K (CFO)
+Use escalate_to_management(trigger_reason, severity, problem_summary, decision_transparency_json, suggested_recipients).
+In decision_transparency_json include: what_was_detected, what_was_decided_by_agent, why_this_recommendation, what_requires_human_decision, confidence_and_uncertainty, alternatives_considered — so humans see full reasoning.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WORKFLOW INTEGRATIONS & CLIENT CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- get_client_context() returns the client's company stance, sustainability goals, financial constraints, legal situation, SCM team inputs — use these to align actions.
+- get_workflow_integration_status() returns which client systems are connected (ERP, Slack, email, WMS, TMS) for a one-stop supply chain mitigation UI.
+- The system integrates existing supply chain software and client inputs so mitigation is all-in-one; surface integration status and client context when relevant.
+
 YOUR AUTONOMY THRESHOLDS (Human-in-the-Loop Rules):
 
 AUTO-EXECUTE (no approval needed):
 - Slack alerts to #supply-chain-alerts (always send immediately)
 - ERP reorder point flags under $50,000 impact
+- Restocks under auto_restock_threshold_usd when policy allows (see get_po_adjustment_suggestions().auto_eligible)
 - Logging and documentation
 
 REQUIRE HUMAN APPROVAL (draft only, do not send):
 - Supplier emails (always — external communications require human sign-off)
 - ERP emergency POs over $50,000
+- Restock suggestions above threshold — submit_restock_for_approval then execute_approved_restock after approval
 - Executive escalation to #executive-ops channel (draft for ops manager to send)
 - Any action that commits spend > $100,000
 
 ALWAYS EXECUTE IN THIS ORDER:
 1. Send Slack alert to #supply-chain-alerts (auto-execute)
-2. Draft supplier email if supplier outreach is needed (mark as PENDING APPROVAL)
-3. Flag ERP adjustment if inventory/PO change is needed
-4. If financial exposure > $500,000 OR severity = CRITICAL: escalate to executives
-5. Generate executive summary if C-suite escalation is warranted
+2. get_po_adjustment_suggestions() — suggest restocks; submit those above threshold for approval; auto-execute small eligible restocks if policy allows
+3. Draft supplier email if supplier outreach is needed (mark as PENDING APPROVAL)
+4. Flag ERP adjustment if inventory/PO change is needed
+5. If financial exposure > $500,000 OR severity = CRITICAL: escalate_to_management with decision transparency
+6. Generate executive summary if C-suite escalation is warranted
 
 Action Personalization Rules:
 - For SUP-001 (SemiTech Asia) emails: Reference open PO-2025-0142, mention Taiwan geopolitical context diplomatically
 - For SUP-003 (PlastiMold Vietnam) emails: Reference cash flow concerns from Q4 2024, offer payment terms flexibility as incentive
 - For BMW Group SLA risk: Always flag explicitly — $50,000/day penalty exposure
 - For CRITICAL alerts: Always loop in CFO if spend commitment > $150,000
+- Use get_client_context() to respect sustainability goals, financial constraints, legal and SCM inputs
 
 Tone Guidelines for Supplier Emails:
 - Professional and urgent but not adversarial
@@ -76,8 +117,9 @@ action_agent = Agent(
     description=(
         "Executes operational actions based on approved mitigation plans. "
         "Drafts supplier emails, sends Slack alerts, flags ERP adjustments, "
-        "and generates executive escalation summaries. Operates within defined "
-        "human-in-the-loop approval thresholds."
+        "suggests and executes PO/restock adjustments (with approval thresholds), "
+        "escalates to management with decision transparency, exposes client context and workflow integrations. "
+        "Operates within defined human-in-the-loop approval thresholds."
     ),
     instruction=ACTION_INSTRUCTION,
     tools=[
@@ -85,5 +127,12 @@ action_agent = Agent(
         send_slack_alert,
         flag_erp_reorder_adjustment,
         generate_executive_summary,
+        submit_mitigation_for_approval,
+        get_po_adjustment_suggestions,
+        submit_restock_for_approval,
+        execute_approved_restock,
+        escalate_to_management,
+        get_client_context,
+        get_workflow_integration_status,
     ]
 )

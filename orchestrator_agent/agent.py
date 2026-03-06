@@ -29,6 +29,7 @@ from tools.risk_tools import (
     get_inventory_runway,
     calculate_sla_breach_probability,
     get_supplier_exposure,
+    get_disruption_probability,
 )
 # Planning
 from tools.planning_tools import (
@@ -36,6 +37,7 @@ from tools.planning_tools import (
     get_alternative_suppliers,
     get_airfreight_rate_estimate,
     rank_scenarios,
+    create_planning_document,
 )
 # Action
 from tools.action_tools import (
@@ -44,6 +46,12 @@ from tools.action_tools import (
     flag_erp_reorder_adjustment,
     generate_executive_summary,
     submit_mitigation_for_approval,
+    get_po_adjustment_suggestions,
+    submit_restock_for_approval,
+    execute_approved_restock,
+    escalate_to_management,
+    get_client_context,
+    get_workflow_integration_status,
 )
 # Memory
 from tools.memory_tools import (
@@ -96,6 +104,8 @@ STEP 2 — MEMORY (before risk, get historical context)
   get_recurring_risk_patterns()
 
 STEP 3 — RISK ASSESSMENT (only if HIGH or CRITICAL signals found)
+  get_disruption_probability("SUP-001", 30)  ← disruption probability (0–100%), risk classification, primary drivers. Optionally pass news_signals_json, climate_alerts_json, shipping_lane_status_json, supplier_health_json from Step 1 for full accuracy.
+  get_disruption_probability("SUP-003", 30)  ← same for SUP-003
   get_supplier_exposure("SUP-001")  ← or relevant supplier
   get_inventory_runway("SEMI-MCU-32")
   calculate_revenue_at_risk("SUP-001", estimated_delay_days)
@@ -110,12 +120,16 @@ STEP 4 — PLAN (only if HIGH or CRITICAL risk)
   get_alternative_suppliers("Semiconductors")
   rank_scenarios(list_of_scenario_results, "low")
   When you have a top mitigation that requires human sign-off (e.g. airfreight > $50K, ERP change, supplier email, or any recommended scenario), call submit_mitigation_for_approval(title, recommendation, situation, severity, context_summary, scenario_name, incremental_cost_usd) so it appears in the Approval Inbox for the user to accept or reject.
+  When you have a final recommendation, call create_planning_document(title, situation_summary, recommended_scenario, scenario_comparison_json, cost_impact_summary, service_level_impact, document_type, affected_item_id, risk_appetite). Populate all arguments ONLY from the outputs of your planning step: use the list of scenario results you passed to rank_scenarios as scenario_comparison_json (JSON string), rank_scenarios' top_recommendation as recommended_scenario, and financial/situation details from simulate_mitigation_scenario and risk assessment. No hardcoded or placeholder text; the document must be fully agent-generated from tool results.
 
 STEP 5 — ACTION
+  get_po_adjustment_suggestions() → suggest restocks; submit_restock_for_approval(...) for those above threshold; execute_approved_restock(approval_id) after human approval. Small restocks under threshold can auto-execute per config.
   send_slack_alert("#supply-chain-alerts", severity, summary, action, exposure, True)
   draft_supplier_email(supplier_name, contact, context, ask)
   flag_erp_reorder_adjustment(item_id, type, qty, reason)
+  If exposure > $500K or CRITICAL or SLA breach > 70%: escalate_to_management(trigger_reason, severity, problem_summary, decision_transparency_json, "VP Operations, CFO") with full decision transparency (what was detected, decided, why, what needs human decision).
   generate_executive_summary(...) if exposure > $500K
+  get_client_context() / get_workflow_integration_status() when surfacing client stance or one-stop UI context.
 
 STEP 6 — LOG
   log_disruption_event(type, region, severity, suppliers, desc, action, cost)
@@ -124,10 +138,11 @@ STEP 6 — LOG
 THRESHOLDS & RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Escalate to CEO/CFO if exposure > $1M
-Escalate to VP Ops if exposure > $500K
+Escalate to VP Ops if exposure > $500K (use escalate_to_management with decision transparency)
 < 5 days inventory → CRITICAL, act immediately
 SLA breach > 70% → always C-suite escalation
 
+Purchase order / restock: get_po_adjustment_suggestions(); small restocks under config threshold auto-eligible; above threshold → submit_restock_for_approval, then execute_approved_restock after approval.
 Supplier emails → NEVER auto-send, draft + flag only
 ERP POs > $50K → needs procurement approval
 Spend > $150K → needs CFO sign-off
@@ -142,6 +157,7 @@ Threat Level: [LOW/MEDIUM/HIGH/CRITICAL]
 Signals: [N found] • [details]
 Financial Exposure: $[X]
 Inventory Runway: [X] days ([item])
+Disruption probability (30d): [supplier] [X]% — [Low/Medium/High]; drivers: [primary_drivers]
 Top Recommendation: [name] | Cost: $[X] | Time: [X]d | SLA: [level]
 Actions: ✅ [auto-done] | ⏳ [pending — who approves]
 Reasoning: [2-3 sentences why this fits this manufacturer]
@@ -168,17 +184,25 @@ root_agent = Agent(
         with_reasoning_log(get_inventory_runway),
         with_reasoning_log(calculate_sla_breach_probability),
         with_reasoning_log(get_supplier_exposure),
+        with_reasoning_log(get_disruption_probability),
         # Planning
         with_reasoning_log(simulate_mitigation_scenario),
         with_reasoning_log(get_alternative_suppliers),
         with_reasoning_log(get_airfreight_rate_estimate),
         with_reasoning_log(rank_scenarios),
+        with_reasoning_log(create_planning_document),
         # Action
         with_reasoning_log(draft_supplier_email),
         with_reasoning_log(send_slack_alert),
         with_reasoning_log(flag_erp_reorder_adjustment),
         with_reasoning_log(generate_executive_summary),
         with_reasoning_log(submit_mitigation_for_approval),
+        with_reasoning_log(get_po_adjustment_suggestions),
+        with_reasoning_log(submit_restock_for_approval),
+        with_reasoning_log(execute_approved_restock),
+        with_reasoning_log(escalate_to_management),
+        with_reasoning_log(get_client_context),
+        with_reasoning_log(get_workflow_integration_status),
         # Memory
         with_reasoning_log(retrieve_similar_disruptions),
         with_reasoning_log(log_disruption_event),

@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs";
 import { fetchNewsDisruptions } from "../../../lib/news-disruptions";
+import {
+  computeDashboardRisk,
+  type DisruptionEvent as RiskDisruptionEvent,
+  type ActiveDisruptionConfig as RiskActiveDisruptionConfig,
+  type SupplierProfile,
+} from "../../../lib/risk-calculation";
+import { computeOperationalImpact } from "../../../lib/operational-impact";
+import { computeRevenueAtRiskExecutive } from "../../../lib/revenue-at-risk";
+import { computeMitigationTradeoff } from "../../../lib/mitigation-tradeoff";
 
 const DATA_ROOT = process.cwd();
 
@@ -9,6 +18,28 @@ function readJson<T>(filename: string): T {
   const filePath = path.join(DATA_ROOT, filename);
   const raw = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(raw) as T;
+}
+
+/** Read disruption history from data/ or project root for risk calculation. */
+function readDisruptionHistory(): RiskDisruptionEvent[] {
+  const paths = [
+    path.join(DATA_ROOT, "data", "mock_disruption_history.json"),
+    path.join(DATA_ROOT, "..", "data", "mock_disruption_history.json"),
+    path.join(DATA_ROOT, "..", "mock_disruption_history.json"),
+    path.join(DATA_ROOT, "ui", "data", "mock_disruption_history.json"),
+  ];
+  for (const p of paths) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, "utf-8");
+        const data = JSON.parse(raw);
+        return Array.isArray(data) ? data : [];
+      }
+    } catch {
+      continue;
+    }
+  }
+  return [];
 }
 
 /** Read active_disruption from repo root (../config) if present, else ui/config. */
@@ -26,6 +57,25 @@ function readActiveDisruptionConfig(): ActiveDisruptionConfig {
     }
   }
   return { active: false, supplier_health_degraded: false, shipping_lanes: {} };
+}
+
+/** Read planning_config from project root for mitigation trade-off. */
+function readPlanningConfig(): { scenario_definitions?: Record<string, unknown>; risk_appetite_weights?: Record<string, { service: number; cost: number; speed: number }>; rank_service_scores?: Record<string, number> } | null {
+  const paths = [
+    path.join(DATA_ROOT, "..", "planning_config.json"),
+    path.join(DATA_ROOT, "planning_config.json"),
+  ];
+  for (const p of paths) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, "utf-8");
+        return JSON.parse(raw) as { scenario_definitions?: Record<string, unknown>; risk_appetite_weights?: Record<string, { service: number; cost: number; speed: number }>; rank_service_scores?: Record<string, number> };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 type DisruptionEvent = {
@@ -82,15 +132,27 @@ export async function GET() {
     if (realItems.length > 0) {
       const profile = readJson<ManufacturerProfile>("config/manufacturer_profile.json");
       const erp = readJson<MockErp>("data/mock_erp.json");
+      const history = readDisruptionHistory();
+      const activeDisruptionForRisk = readActiveDisruptionConfig() as RiskActiveDisruptionConfig;
       const suppliers = profile.suppliers ?? [];
+      const { supplierRisks, aggregateDisruptionRiskPct } = computeDashboardRisk(
+        suppliers as SupplierProfile[],
+        history,
+        activeDisruptionForRisk
+      );
+      const operationalImpact = computeOperationalImpact(
+        erp.inventory ?? [],
+        profile.production_lines ?? [],
+        profile.suppliers ?? [],
+        activeDisruptionForRisk as { active?: boolean; shipping_lanes?: Record<string, { status?: string; avg_delay_days?: number }> }
+      );
+      const revenueAtRiskExecutive = computeRevenueAtRiskExecutive(operationalImpact, profile);
+      const planningConfig = readPlanningConfig();
+      const mitigationTradeoff = planningConfig
+        ? computeMitigationTradeoff(planningConfig, 10, 5000, "medium")
+        : null;
       const singleSourceSuppliers = suppliers.filter((s) => s.single_source === true);
       const maxSpendPct = suppliers.length === 0 ? 0 : Math.max(0, ...suppliers.map((s) => Number(s.spend_pct) || 0));
-      const criticalCount = realItems.filter((d) => d.severity === "CRITICAL").length;
-      const highCount = realItems.filter((d) => d.severity === "HIGH").length;
-      const disruptionRiskScore = Math.min(
-        100,
-        Math.round(criticalCount * 15 + highCount * 8 + Math.min(30, realItems.length * 5))
-      );
       const disruptionList = realItems.slice(0, 20).map((d) => ({
         id: d.id,
         severity: d.severity,
@@ -99,11 +161,11 @@ export async function GET() {
         age: "Recent",
       }));
       const kpis = {
-        disruptionRisk: disruptionRiskScore,
+        disruptionRisk: aggregateDisruptionRiskPct,
         revenueAtRisk: 0,
         activeDisruptions: realItems.length,
         pendingApprovals: 0,
-        overallSupplyRisk: disruptionRiskScore,
+        overallSupplyRisk: aggregateDisruptionRiskPct,
         logisticsFreight: Math.min(100, realItems.length * 25),
         supplierConcentration: Math.min(100, Math.max(0, Math.round(0 + maxSpendPct + singleSourceSuppliers.length * 40))),
         suppliers: profile.suppliers?.length ?? 0,
@@ -114,7 +176,7 @@ export async function GET() {
         activeDisruptionsTrendPct: 0,
         pendingApprovalsTrendPct: 0,
       };
-      return NextResponse.json({ disruptions: disruptionList, kpis });
+      return NextResponse.json({ disruptions: disruptionList, kpis, supplierRisks, operationalImpact, revenueAtRiskExecutive, mitigationTradeoff, allSuppliers: (profile.suppliers ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })) });
     }
 
     const disruptions = readJson<DisruptionEvent[]>("data/mock_disruption_history.json");
@@ -205,22 +267,6 @@ export async function GET() {
       )
     ).length;
 
-    const disruptionRiskScore =
-      activeCount === 0
-        ? 0
-        : Math.min(
-            100,
-            Math.round(
-              criticalCount * 15 +
-                highCount * 8 +
-                (pendingCount / Math.max(activeCount, 1)) * 20 +
-                Math.min(20, totalRevenueAtRisk / 1_000_000)
-            )
-          );
-
-    const logisticsFreightScore =
-      activeCount > 0 ? Math.min(100, Math.round((logisticsCount / activeCount) * 100)) : 0;
-
     const suppliers = profile.suppliers ?? [];
     const singleSourceSuppliers = suppliers.filter((s) => s.single_source === true);
     const maxSpendPct = suppliers.length === 0 ? 0 : Math.max(0, ...suppliers.map((s) => Number(s.spend_pct) || 0));
@@ -228,6 +274,29 @@ export async function GET() {
       100,
       Math.max(0, Math.round(0 + maxSpendPct + singleSourceSuppliers.length * 40 + (activeDisruption.supplier_health_degraded ? 15 : 0)))
     );
+
+    const { supplierRisks, aggregateDisruptionRiskPct } = computeDashboardRisk(
+      suppliers as SupplierProfile[],
+      disruptions as RiskDisruptionEvent[],
+      activeDisruption as RiskActiveDisruptionConfig
+    );
+
+    const disruptionRiskScore = aggregateDisruptionRiskPct;
+
+    const operationalImpact = computeOperationalImpact(
+      erp.inventory ?? [],
+      profile.production_lines ?? [],
+      profile.suppliers ?? [],
+      activeDisruption as { active?: boolean; shipping_lanes?: Record<string, { status?: string; avg_delay_days?: number }> }
+    );
+    const revenueAtRiskExecutive = computeRevenueAtRiskExecutive(operationalImpact, profile);
+    const planningConfig = readPlanningConfig();
+    const mitigationTradeoff = planningConfig
+      ? computeMitigationTradeoff(planningConfig, 10, 5000, "medium")
+      : null;
+
+    const logisticsFreightScore =
+      activeCount > 0 ? Math.min(100, Math.round((logisticsCount / activeCount) * 100)) : 0;
 
     const disruptionList = effectiveDisruptions.slice(0, 20).map((d) => ({
       id: d.event_id,
@@ -257,6 +326,11 @@ export async function GET() {
     return NextResponse.json({
       disruptions: disruptionList,
       kpis,
+      supplierRisks,
+      operationalImpact,
+      revenueAtRiskExecutive,
+      mitigationTradeoff,
+      allSuppliers: (profile.suppliers ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })),
     });
   } catch (e) {
     console.error("Failed to load dashboard data:", e);

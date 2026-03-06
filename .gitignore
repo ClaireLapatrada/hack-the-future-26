@@ -5,6 +5,7 @@ venv/
 **/.env*
 .DS_Store
 orchestrator_agent/.adk/*
+orchestrator_agent/.adk/session.db
 ui/node_modules/
 ui/.next/
 ui/.turbo/
