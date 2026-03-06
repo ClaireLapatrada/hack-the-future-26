@@ -30,7 +30,7 @@ class RunAgentRequest(BaseModel):
 def initiate_event(body: InitiateEventRequest = Body(...)) -> Dict[str, Any]:
     """Set active_disruption.json so the next pipeline run sees a disruption."""
     try:
-        from scripts.initiate_event import set_disruption_active
+        from backend.scripts.initiate_event import set_disruption_active
         set_disruption_active(lane=body.lane, delay_days=body.delay_days)
         return {
             "ok": True,
@@ -46,7 +46,7 @@ def initiate_event(body: InitiateEventRequest = Body(...)) -> Dict[str, Any]:
 def clear_event() -> Dict[str, Any]:
     """Reset active_disruption.json to all-OPERATIONAL state."""
     try:
-        from scripts.initiate_event import clear_disruption
+        from backend.scripts.initiate_event import clear_disruption
         clear_disruption()
         return {"ok": True, "message": "Disruption cleared. All lanes and supplier health are OPERATIONAL."}
     except Exception as exc:
@@ -62,7 +62,7 @@ def run_agent(body: RunAgentRequest = Body(...)) -> Dict[str, Any]:
     pipeline runner for production use.
     """
     try:
-        from scripts.initiate_event import _run_one_cycle
+        from backend.scripts.initiate_event import _run_one_cycle
         _run_one_cycle(prompt=body.prompt)
         return {"ok": True, "message": "Agent cycle complete. Check /api/agent-stream for results."}
     except Exception as exc:

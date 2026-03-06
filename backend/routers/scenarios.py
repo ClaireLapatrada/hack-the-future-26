@@ -57,7 +57,7 @@ def run_scenarios(body: ScenarioRunRequest = Body(...)) -> Dict[str, Any]:
     Calls simulate_mitigation_scenario and rank_scenarios from planning_tools
     directly, matching the logic the TS route was duplicating.
     """
-    from tools.planning_tools import simulate_mitigation_scenario, rank_scenarios
+    from backend.tools.planning_tools import simulate_mitigation_scenario, rank_scenarios
     from backend.settings import settings
 
     event_id = body.eventId or body.event_id

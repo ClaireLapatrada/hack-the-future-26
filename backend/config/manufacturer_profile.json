@@ -1,0 +1,21 @@
+{
+  "suppliers": [
+    {"id": "SUP-001", "name": "SemiTech Asia", "category": "Semiconductors", "country": "Taiwan", "spend_pct": 42, "lead_time_days": 45, "single_source": true, "contract_end": "2025-12-31", "health_score": 72},
+    {"id": "SUP-002", "name": "SteelCore Europe", "category": "Steel Components", "country": "Poland", "spend_pct": 28, "lead_time_days": 14, "single_source": false, "contract_end": "2026-06-30", "health_score": 88},
+    {"id": "SUP-003", "name": "PlastiMold Vietnam", "category": "Plastic Injection Parts", "country": "Vietnam", "spend_pct": 18, "lead_time_days": 30, "single_source": false, "contract_end": "2025-09-30", "health_score": 65},
+    {"id": "SUP-004", "name": "LogiFreight Red Sea", "category": "Ocean Freight", "country": "International", "spend_pct": 12, "lead_time_days": 22, "single_source": false, "contract_end": "2025-12-31", "health_score": 55}
+  ],
+  "inventory_policy": {
+    "target_buffer_days": 30,
+    "reorder_threshold_days": 10,
+    "max_buffer_days": 60
+  },
+  "customer_slas": [
+    {"customer": "BMW Group", "on_time_delivery_pct": 98.5, "penalty_per_day_usd": 50000},
+    {"customer": "Volkswagen AG", "on_time_delivery_pct": 97, "penalty_per_day_usd": 35000}
+  ],
+  "production_lines": [
+    {"line_id": "PL-1", "product": "ECU Control Modules", "daily_output_units": 1200, "semiconductor_dependent": true, "daily_revenue_usd": 96000},
+    {"line_id": "PL-2", "product": "Steel Brake Assemblies", "daily_output_units": 3000, "semiconductor_dependent": false, "daily_revenue_usd": 54000}
+  ]
+}

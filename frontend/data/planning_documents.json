@@ -1,0 +1,243 @@
+[
+  {
+    "id": "PLAN-20260306-014457",
+    "slug": "suez-disruption-mitigation",
+    "title": "Suez disruption mitigation",
+    "createdAt": "2026-03-06T01:44:57.617721",
+    "situationSummary": "Asia-Europe Suez lane disrupted; SEMI-MCU-32 at risk.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_name": "Buffer Build",
+        "expected_cost_increase_usd": 10000
+      }
+    ],
+    "costImpactSummary": "Est. +K",
+    "serviceLevelImpact": "High",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "",
+    "riskAppetite": ""
+  },
+  {
+    "id": "PLAN-20260306-015233",
+    "slug": "mitigation-strategy-semi-mcu-32-supply-continuity",
+    "title": "Mitigation Strategy: SEMI-MCU-32 Supply Continuity",
+    "createdAt": "2026-03-06T01:52:33.901086",
+    "situationSummary": "Current Asia-Europe (Suez) lane disruption creates 16-day delay. SEMI-MCU-32 inventory is at 12 days, posing severe risk to production.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_name": "Emergency Airfreight",
+        "financials": {
+          "incremental_cost_usd": 271000
+        },
+        "timing": {
+          "implementation_days": 2
+        },
+        "service_level_protection": "High"
+      },
+      {
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "financials": {
+          "incremental_cost_usd": 11400
+        },
+        "timing": {
+          "implementation_days": 1
+        },
+        "service_level_protection": "High"
+      },
+      {
+        "scenario_name": "Alternate Supplier Activation",
+        "financials": {
+          "incremental_cost_usd": 59400
+        },
+        "timing": {
+          "implementation_days": 21
+        },
+        "service_level_protection": "Medium"
+      }
+    ],
+    "costImpactSummary": "Total incremental cost of $11,400, significant savings over $271k airfreight option.",
+    "serviceLevelImpact": "High - restores 60 days of runway.",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
+  },
+  {
+    "id": "PLAN-20260306-021841",
+    "slug": "mitigation-plan-suez-shipping-disruption-semi-mcu-32",
+    "title": "Mitigation Plan: Suez Shipping Disruption - SEMI-MCU-32",
+    "createdAt": "2026-03-06T02:18:41.723822",
+    "situationSummary": "Disruption of Asia-Europe (Suez) lane causes 16-day delay from primary supplier SemiTech Asia. Inventory runway only 12 days. Severe impact expected if no action taken.",
+    "recommendedScenario": "Emergency Airfreight",
+    "scenarioComparison": [
+      {
+        "scenario_name": "Emergency Airfreight",
+        "composite_score": 63.4,
+        "incremental_cost_usd": 271000,
+        "service_level_protection": "High",
+        "timing_days": 2
+      },
+      {
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "composite_score": 93.4,
+        "incremental_cost_usd": 11400,
+        "service_level_protection": "High",
+        "timing_days": 1
+      },
+      {
+        "scenario_name": "Alternate Supplier Activation",
+        "composite_score": 61.4,
+        "incremental_cost_usd": 59400,
+        "service_level_protection": "Medium",
+        "timing_days": 21
+      }
+    ],
+    "costImpactSummary": "Incremental cost $271,000 for emergency airfreight vs $1.36M in SLA penalties avoided. Total ROI is high.",
+    "serviceLevelImpact": "Mitigates 100% SLA breach risk for key customers BMW and VW.",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
+  },
+  {
+    "id": "PLAN-20260306-024248",
+    "slug": "mitigation-plan-semi-mcu-32-supply-continuity",
+    "title": "Mitigation Plan: SEMI-MCU-32 Supply Continuity",
+    "createdAt": "2026-03-06T02:42:48.376482",
+    "situationSummary": "Asia-Europe (Suez) shipping lane is disrupted (16-day delay). Our primary semiconductor supplier (SUP-001) is in Taiwan. We have 12 days of SEMI-MCU-32 inventory, posing a critical risk of stockout within 12 days, leading to potential $1.83M in revenue and penalty risk.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "incremental_cost_usd": 7000,
+        "service_level_protection": "High",
+        "timing": {
+          "implementation_days": 1
+        }
+      },
+      {
+        "scenario_name": "Emergency Airfreight",
+        "incremental_cost_usd": 95000,
+        "service_level_protection": "High",
+        "timing": {
+          "implementation_days": 2
+        }
+      },
+      {
+        "scenario_name": "Alternate Supplier Activation",
+        "incremental_cost_usd": 49500,
+        "service_level_protection": "Medium",
+        "timing": {
+          "implementation_days": 21
+        }
+      }
+    ],
+    "costImpactSummary": "Incremental cost of $7,000 for safety stock increase compared to $95,000 for emergency airfreight. Total exposure mitigated: $1.83M.",
+    "serviceLevelImpact": "",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
+  },
+  {
+    "id": "PLAN-20260306-114951",
+    "slug": "mitigation-strategy-semi-mcu-32-supply-chain-disruption",
+    "title": "Mitigation Strategy: SEMI-MCU-32 Supply Chain Disruption",
+    "createdAt": "2026-03-06T11:49:51.776157",
+    "situationSummary": "Supply chain disruption identified for SEMI-MCU-32 with 100% probability of plant shutdown within 10 days if no mitigation is taken. A 16-day disruption window is modeled. Pre-emptive buffer build is the most effective strategy to ensure high service-level performance and prevent stockouts.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "scenario_id": "buffer_build",
+        "expected_cost_increase_usd": 10001.41,
+        "expected_service_level": "High",
+        "average_score": 98.9,
+        "description": "Immediately increase safety stock to 60 days by pulling forward orders."
+      },
+      {
+        "scenario_name": "Emergency Airfreight",
+        "scenario_id": "airfreight",
+        "expected_cost_increase_usd": 215056.2,
+        "expected_service_level": "High",
+        "average_score": 74.1,
+        "description": "Redirect in-transit or new order via air cargo to bypass sea lane disruption."
+      },
+      {
+        "scenario_name": "Spot Market Purchase",
+        "scenario_id": "spot_market",
+        "expected_cost_increase_usd": 36132.9,
+        "expected_service_level": "Medium",
+        "average_score": 70,
+        "description": "Source required components from authorized spot/grey market distributors."
+      },
+      {
+        "scenario_name": "Alternate Supplier Activation",
+        "scenario_id": "alternate_supplier",
+        "expected_cost_increase_usd": 56253.16,
+        "expected_service_level": "Medium",
+        "average_score": 65,
+        "description": "Qualify and onboard a backup semiconductor supplier (e.g., South Korea or EU)."
+      }
+    ],
+    "costImpactSummary": "Expected cost increase: $10,001 (16%)",
+    "serviceLevelImpact": "High (SLA compliance maintained)",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
+  },
+  {
+    "id": "PLAN-20260306-121456",
+    "slug": "mitigation-strategy-for-semi-mcu-32-supply-disruption",
+    "title": "Mitigation Strategy for SEMI-MCU-32 Supply Disruption",
+    "createdAt": "2026-03-06T12:14:56.289457",
+    "situationSummary": "100% probability of plant shutdown within 10 days for ECU Control Modules due to reliance on single-sourced SEMI-MCU-32. Buffer build is the most resilient strategy.",
+    "recommendedScenario": "Pre-emptive Buffer Stock Build",
+    "scenarioComparison": [
+      {
+        "scenario_id": "buffer_build",
+        "scenario_name": "Pre-emptive Buffer Stock Build",
+        "description": "Immediately increase safety stock to 60 days by pulling forward orders.",
+        "expected_service_level": "High",
+        "expected_cost_increase_usd": 9999.33,
+        "average_score": 98.9
+      },
+      {
+        "scenario_id": "airfreight",
+        "scenario_name": "Emergency Airfreight",
+        "description": "Redirect in-transit or new order via air cargo to bypass sea lane disruption.",
+        "expected_service_level": "High",
+        "expected_cost_increase_usd": 214973.2,
+        "average_score": 74.1
+      },
+      {
+        "scenario_id": "spot_market",
+        "scenario_name": "Spot Market Purchase",
+        "description": "Source required components from authorized spot/grey market distributors.",
+        "expected_service_level": "Medium",
+        "expected_cost_increase_usd": 36121.23,
+        "average_score": 70
+      },
+      {
+        "scenario_id": "alternate_supplier",
+        "scenario_name": "Alternate Supplier Activation",
+        "description": "Qualify and onboard a backup semiconductor supplier (e.g., South Korea or EU).",
+        "expected_service_level": "Medium",
+        "expected_cost_increase_usd": 56248.49,
+        "average_score": 65
+      },
+      {
+        "scenario_id": "demand_deferral",
+        "scenario_name": "Customer Demand Deferral",
+        "description": "Negotiate delivery timeline extension with customers to absorb delay.",
+        "expected_service_level": "Low",
+        "expected_cost_increase_usd": 0,
+        "average_score": 50.6
+      }
+    ],
+    "costImpactSummary": "Expected cost increase: $9,999.33 (16.0%)",
+    "serviceLevelImpact": "High expected service-level performance.",
+    "documentType": "mitigation_plan",
+    "affectedItemId": "SEMI-MCU-32",
+    "riskAppetite": "low"
+  }
+]

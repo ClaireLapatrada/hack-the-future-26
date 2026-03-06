@@ -15,8 +15,10 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Anchor to repo root (backend/ is one level below root)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# backend/ dir — data, config, agents all live here now
+_BACKEND_ROOT = Path(__file__).resolve().parent
+# Repo root — used for .env loading and project_root field
+_PROJECT_ROOT = _BACKEND_ROOT.parent
 
 
 class Settings(BaseSettings):
@@ -28,9 +30,9 @@ class Settings(BaseSettings):
 
     # ── Repo layout ────────────────────────────────────────────────────────
     project_root: Path = _PROJECT_ROOT
-    data_dir: Path = _PROJECT_ROOT / "data"
-    config_dir: Path = _PROJECT_ROOT / "config"
-    ui_data_dir: Path = _PROJECT_ROOT / "ui" / "data"
+    data_dir: Path = _BACKEND_ROOT / "data"
+    config_dir: Path = _BACKEND_ROOT / "config"
+    ui_data_dir: Path = _PROJECT_ROOT / "frontend" / "data"
 
     # ── Path overrides (honour existing env var names used in tools) ───────
     erp_json_path: Optional[Path] = Field(default=None, alias="ERP_JSON_PATH")
@@ -88,7 +90,7 @@ class Settings(BaseSettings):
 
     @property
     def effective_planning_config_path(self) -> Path:
-        return self.planning_config_path or (self.project_root / "planning_config.json")
+        return self.planning_config_path or (_BACKEND_ROOT / "planning_config.json")
 
     @property
     def effective_action_config_path(self) -> Path:
