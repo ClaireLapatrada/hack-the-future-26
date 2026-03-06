@@ -16,9 +16,12 @@ planning_agent/.adk/*
 planning_agent/.adk/session.db
 risk_agent/.adk/*
 risk_agent/.adk/session.db
-ui/node_modules/
-ui/.next/
-ui/.turbo/
+frontend/node_modules/
+frontend/.next/
+frontend/.turbo/
+
+.next/
+node_modules/
 
 # Python
 __pycache__/
