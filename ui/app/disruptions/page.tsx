@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { LayoutShell } from "../../components/LayoutShell";
 import { AgentReasoningStream, type StreamEntry } from "../../components/AgentReasoningStream";
@@ -62,6 +62,14 @@ function ChevronRightIcon({ className }: { className?: string }) {
 }
 
 export default function DisruptionsPage() {
+  return (
+    <Suspense>
+      <DisruptionsPageInner />
+    </Suspense>
+  );
+}
+
+function DisruptionsPageInner() {
   const searchParams = useSearchParams();
   const idFromUrl = searchParams.get("id");
 
@@ -91,26 +99,35 @@ export default function DisruptionsPage() {
   const [scenarioError, setScenarioError] = useState<string | null>(null);
 
   useEffect(() => {
-    setHasLoaded(false);
-    fetch("/api/disruptions")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load disruptions");
-        return res.json();
-      })
-      .then((data: DisruptionEvent[]) => {
-        setEvents(data);
-        if (data.length > 0) {
-          const idToSelect = idFromUrl && data.some((e) => e.id === idFromUrl)
-            ? idFromUrl
-            : data[0].id;
-          setSelectedId(idToSelect);
-        }
-        setHasLoaded(true);
-      })
-      .catch((e) => {
-        setLoadError(e instanceof Error ? e.message : "Failed to load");
-        setHasLoaded(true);
-      });
+        const fetchDisruptions = () => {
+      fetch("/api/disruptions")
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to load disruptions");
+          return res.json();
+        })
+        .then((data: DisruptionEvent[]) => {
+          setEvents(data);
+          if (data.length > 0) {
+            const idToSelect = idFromUrl && data.some((e) => e.id === idFromUrl)
+              ? idFromUrl
+              : data[0].id;
+            setSelectedId(idToSelect);
+          }
+          setHasLoaded(true);
+        })
+        .catch((e) => {
+          setLoadError(e instanceof Error ? e.message : "Failed to load");
+          setHasLoaded(true);
+        });
+    };
+    setHasLoaded(false);    fetchDisruptions();
+    const interval = setInterval(fetchDisruptions, 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") fetchDisruptions(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [idFromUrl]);
 
   useEffect(() => {

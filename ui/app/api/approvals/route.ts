@@ -142,7 +142,7 @@ export async function GET() {
           const action = d.mitigation_taken?.action ?? "Pending";
           const rev = d.impact?.revenue_at_risk_usd;
           const impactStr =
-            rev != null && typeof rev === "number"
+            rev != null && true
               ? `Revenue at risk: $${(rev / 1_000_000).toFixed(2)}M. `
               : "";
           approvals.push({
@@ -163,6 +163,16 @@ export async function GET() {
         // ignore
       }
     }
+
+    // Deduplicate approval items by id
+    const seen = new Set<string>();
+    const unique = approvals.filter((a) => {
+      if (seen.has(a.id)) return false;
+      seen.add(a.id);
+      return true;
+    });
+    approvals.length = 0;
+    approvals.push(...unique);
 
     // Newest first (by id: APPR- and EVT- sort by date)
     approvals.sort((a, b) => {
@@ -198,18 +208,23 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (id.startsWith("APPR-")) {
+    if (id.startsWith("APPR-") || id.startsWith("RST-")) {
       if (!dataFileExists(PENDING_APPROVALS_FILE)) {
         return NextResponse.json({ error: "Approval not found" }, { status: 404 });
       }
       const list = readJson<PendingApprovalEntry[]>(PENDING_APPROVALS_FILE);
-      const idx = list.findIndex((e) => e.id === id);
-      if (idx === -1) {
+      const idx = list.findIndex(
+        (e) => e.id === id && (e.status === "pending" || e.status === undefined)
+      );
+      // Fall back to first match if no pending entry found (for safety)
+      const resolveIdx = idx !== -1 ? idx : list.findIndex((e) => e.id === id);
+
+      if (resolveIdx === -1) {
         return NextResponse.json({ error: "Approval not found" }, { status: 404 });
       }
-      list[idx].status = action === "approve" ? "approved" : "rejected";
+      list[resolveIdx].status = action === "approve" ? "approved" : "rejected";
       writeJson(PENDING_APPROVALS_FILE, list);
-      return NextResponse.json({ ok: true, id, status: list[idx].status });
+      return NextResponse.json({ ok: true, id, status: list[resolveIdx].status });
     }
 
     // Mock event_id (EVT-*): store resolution so GET excludes it from pending

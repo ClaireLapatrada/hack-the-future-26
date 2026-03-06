@@ -95,6 +95,13 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     fetchApprovals();
+      const interval = setInterval(fetchApprovals, 30_000);
+      const onVisible = () => { if (document.visibilityState === "visible") fetchApprovals(); };
+      document.addEventListener("visibilitychange", onVisible);
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const selected = selectedId ? approvals.find((a) => a.id === selectedId) ?? approvals[0] : approvals[0];
@@ -158,7 +165,7 @@ export default function ApprovalsPage() {
 
         {/* Right: Detail panel — scrollable */}
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2">
             {!selected ? (
               <div className="glass-card p-4 text-textMuted text-sm">Select an approval or wait for data.</div>
             ) : (

@@ -1,3 +1,7 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
 export function Topbar({
   title,
   subtitle,
@@ -9,6 +13,20 @@ export function Topbar({
   lastSync?: string;
   headerRight?: React.ReactNode;
 }) {
+    const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const dateStr = now
+    ? now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    : "—";
+  const timeStr = now
+    ? now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+    : "—";
   return (
     <>
       {/* Top bar: date/time + ADK Agent Online pill */}
@@ -17,7 +35,8 @@ export function Topbar({
           <LayoutIcon className="h-4 w-4 shrink-0 text-textMuted" />
           <div className="flex flex-col font-mono text-sm text-textPrimary leading-tight">
             <span>Sun, Mar 1</span>
-            <span className="text-xs text-textMuted">06:54 PM</span>
+            <span>{dateStr}</span>
+            <span className="text-xs text-textMuted">{timeStr}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-lg border border-agentCyan/50 bg-surfaceMuted/80 px-3 py-1.5">

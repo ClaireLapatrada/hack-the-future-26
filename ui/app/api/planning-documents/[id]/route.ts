@@ -34,7 +34,7 @@ export async function GET(
   try {
     const { id } = await params;
     const docs = readDocs();
-    const doc = docs.find((d: { id?: string }) => d.id === id);
+    const doc = (docs as Array<{ id?: string }>).find((d) => d.id === id);
     if (!doc) {
       return NextResponse.json(
         { error: "Planning document not found" },

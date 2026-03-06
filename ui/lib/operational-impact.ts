@@ -80,8 +80,16 @@ export function computeOperationalImpact(
     }
   }
 
+    const disruptionActive =
+    !!activeDisruption.active &&
+    Object.values(activeDisruption.shipping_lanes ?? {}).some(
+      (v) => v?.status === "DISRUPTED"
+    );
+
   const atRiskLineIds = new Set(
-    criticalDependencies.filter((d) => d.single_source).map((d) => d.line_id)
+        criticalDependencies
+      .filter((d) => d.single_source && disruptionActive)
+      .map((d) => d.line_id)
   );
 
   let delayMin = 5;
