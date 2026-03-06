@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+
+# Python
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Frontend — not needed in backend image
+frontend
+node_modules
+
+# Dev / IDE
+.idea
+.vscode
+.adk
+*.md
+
+# Secrets — pass via env_file or secrets manager instead
+.env
+.env.*
+
+# Test / CI
+.pytest_cache
+.coverage
+htmlcov
+
+# Build artifacts
+dist
+build
+*.egg-info
