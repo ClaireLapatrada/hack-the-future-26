@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/approvals/route": "app/api/approvals/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
+  "/api/planning-documents/route": "app/api/planning-documents/route.js",
+  "/api/rules/route": "app/api/rules/route.js",
+  "/api/scenarios/run/route": "app/api/scenarios/run/route.js",
+  "/api/disruptions/route": "app/api/disruptions/route.js",
+  "/api/agent-stream/route": "app/api/agent-stream/route.js",
+  "/api/planning-documents/[id]/route": "app/api/planning-documents/[id]/route.js",
+  "/approvals/page": "app/approvals/page.js",
+  "/disruptions/page": "app/disruptions/page.js",
+  "/planning-documents/[id]/page": "app/planning-documents/[id]/page.js",
+  "/planning-documents/page": "app/planning-documents/page.js",
+  "/page": "app/page.js",
+  "/rules/page": "app/rules/page.js"
+}
