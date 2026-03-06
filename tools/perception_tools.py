@@ -24,6 +24,13 @@ except ImportError:
 
 import requests
 
+from backend.models.tool_results import (
+    ClimateAlertsResult,
+    DisruptionNewsResult,
+    ShippingLaneStatusResult,
+    SupplierHealthResult,
+)
+
 
 def _call_google_custom_search(query: str, num: int = 10) -> dict | None:
     """Call Google Custom Search JSON API. Returns parsed JSON or None on failure."""
@@ -51,7 +58,7 @@ def _call_google_custom_search(query: str, num: int = 10) -> dict | None:
         return {"error": str(e)}
 
 
-def search_disruption_news(query: str) -> dict:
+def search_disruption_news(query: str) -> DisruptionNewsResult:
     """
     Search for supply chain disruption news related to a topic, region, or supplier.
     Requires GOOGLE_SEARCH_ENGINE_ID and either GOOGLE_SEARCH_API_KEY or GOOGLE_API_KEY.
@@ -136,7 +143,7 @@ def _operational_status() -> dict:
     }
 
 
-def get_shipping_lane_status(lane: str) -> dict:
+def get_shipping_lane_status(lane: str) -> ShippingLaneStatusResult:
     """
     Get current operational status of a shipping lane.
     When config/active_disruption.json has active=true and this lane is marked DISRUPTED there
@@ -256,7 +263,7 @@ def _call_nasa_eonet(days: int = 30, limit: int = 100) -> dict | None:
         return None
 
 
-def get_climate_alerts(regions: list[str]) -> dict:
+def get_climate_alerts(regions: list[str]) -> ClimateAlertsResult:
     """
     Fetch active climate and natural disaster alerts for given regions.
     Uses NASA EONET (Earth Observatory Natural Event Tracker) API.
@@ -394,7 +401,7 @@ Example format:
         return None
 
 
-def score_supplier_health(supplier_id: str) -> dict:
+def score_supplier_health(supplier_id: str) -> SupplierHealthResult:
     """
     Score a supplier's financial and operational health using Gemini.
     Uses supplier context from mock_profile.json if present.

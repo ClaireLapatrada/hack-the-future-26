@@ -1,19 +1,6 @@
 import { NextResponse } from "next/server";
-import path from "path";
-import fs from "fs";
 
-const DATA_ROOT = process.cwd();
-const RULES_PATH = path.join(DATA_ROOT, "config", "rules.json");
-
-function readJson<T>(filename: string): T {
-  const filePath = path.join(DATA_ROOT, filename);
-  const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw) as T;
-}
-
-function writeRulesConfig(config: RulesConfig): void {
-  fs.writeFileSync(RULES_PATH, JSON.stringify(config, null, 2), "utf-8");
-}
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 type RulesConfig = {
   sections: Array<{
@@ -30,38 +17,27 @@ type RulesConfig = {
 
 export async function GET() {
   try {
-    const data = readJson<RulesConfig>("config/rules.json");
-    return NextResponse.json(data);
+    const res = await fetch(`${BACKEND_URL}/api/rules`, { cache: "no-store" });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error("Failed to load rules config:", e);
-    return NextResponse.json(
-      { error: "Failed to load rules config" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load rules config" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const nextValues = body.initialValues as Record<string, number | string | boolean> | undefined;
-    if (!nextValues || typeof nextValues !== "object") {
-      return NextResponse.json(
-        { error: "Missing or invalid initialValues" },
-        { status: 400 }
-      );
-    }
-
-    const config = readJson<RulesConfig>("config/rules.json");
-    config.initialValues = { ...config.initialValues, ...nextValues };
-    writeRulesConfig(config);
-
-    return NextResponse.json(config);
+    const res = await fetch(`${BACKEND_URL}/api/rules`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error("Failed to save rules config:", e);
-    return NextResponse.json(
-      { error: "Failed to save rules config" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to save rules config" }, { status: 500 });
   }
 }

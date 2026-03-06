@@ -17,6 +17,17 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
 
+from backend.models.tool_results import (
+    AirfreightRateResult,
+    AlternativeSuppliersResult,
+    BufferStockResult,
+    CreatePlanningDocumentResult,
+    MitigationTradeoffsResult,
+    RankScenariosResult,
+    ScenarioSimulationResult,
+    SupplierReallocationResult,
+)
+
 # Load config once at import
 _ENV_CONFIG_PATH = os.getenv("PLANNING_CONFIG_PATH")
 _CONFIG_PATH = (
@@ -63,7 +74,7 @@ def run_scenario_simulation(
     affected_item_id: str = "SEMI-MCU-32",
     risk_appetite: str = "medium",
     monte_carlo_runs: int = 200,
-) -> dict:
+) -> ScenarioSimulationResult:
     """
     Scenario simulation: evaluate mitigation strategies across cost, service level, and operational risk.
     Uses Monte Carlo simulation for disruption and demand uncertainty; multi-objective evaluation.
@@ -174,7 +185,7 @@ def simulate_mitigation_scenario(
     }
 
 
-def rank_scenarios(scenarios_json: str, risk_appetite: str = "low") -> dict:
+def rank_scenarios(scenarios_json: str, risk_appetite: str = "low") -> RankScenariosResult:
     """Rank mitigation scenarios by composite score adjusted for risk appetite. Used by run_scenario_simulation."""
     try:
         scenarios = json.loads(scenarios_json)
@@ -210,7 +221,7 @@ def evaluate_mitigation_tradeoffs(
     quantity_needed: int = 5000,
     affected_item_id: str = "SEMI-MCU-32",
     risk_appetite: str = "medium",
-) -> dict:
+) -> MitigationTradeoffsResult:
     """Multi-variable trade-off: delegates to run_scenario_simulation and returns recommended strategy, cost vs resilience, service-level impact."""
     out = run_scenario_simulation(
         disruption_days_min=max(1, disruption_days - 5),
@@ -244,7 +255,7 @@ def create_planning_document(
     document_type: str = "mitigation_plan",
     affected_item_id: str = "",
     risk_appetite: str = "",
-) -> dict:
+) -> CreatePlanningDocumentResult:
     """
     Create a persistent planning document (past crisis / mitigation plan) for internal access.
     Call this AFTER run_scenario_simulation or evaluate_mitigation_tradeoffs when you have a final recommendation.
@@ -301,7 +312,7 @@ def create_planning_document(
 def optimize_supplier_reallocation(
     demand_units: Optional[float] = None,
     disruption_probabilities_json: Optional[str] = None,
-) -> dict:
+) -> SupplierReallocationResult:
     """
     Supplier reallocation optimization: determine optimal distribution of procurement across suppliers.
     Objective: minimize total cost + risk penalty. Constraints: capacity, demand, lead-time limits.
@@ -407,7 +418,7 @@ def recommend_buffer_stock(
     service_level_target_pct: Optional[float] = None,
     holding_cost_pct_per_year: Optional[float] = None,
     stockout_cost_per_unit: Optional[float] = None,
-) -> dict:
+) -> BufferStockResult:
     """
     Buffer stock strategy: determine optimal safety stock balancing inventory cost and service reliability.
     Uses demand variability and lead-time variability from ERP/profile; safety stock ≈ Z × σ_LT.
@@ -476,7 +487,7 @@ def recommend_buffer_stock(
 
 # ---------- Alternative suppliers & airfreight (unchanged) ----------
 
-def get_alternative_suppliers(category: str, exclude_regions: Optional[List[str]] = None) -> dict:
+def get_alternative_suppliers(category: str, exclude_regions: Optional[List[str]] = None) -> AlternativeSuppliersResult:
     """Find alternative suppliers for a component category, optionally excluding regions."""
     suppliers = ALTERNATIVE_SUPPLIERS.get(category, [])
     if exclude_regions:
@@ -484,7 +495,7 @@ def get_alternative_suppliers(category: str, exclude_regions: Optional[List[str]
     return {"status": "success", "category": category, "excluded_regions": exclude_regions or [], "alternatives_found": len(suppliers), "alternative_suppliers": suppliers}
 
 
-def get_airfreight_rate_estimate(origin_country: str, destination_country: str, weight_kg: float) -> dict:
+def get_airfreight_rate_estimate(origin_country: str, destination_country: str, weight_kg: float) -> AirfreightRateResult:
     """Airfreight rate estimate for emergency shipments."""
     route_key = f"{origin_country}|{destination_country}"
     rate_data = AIRFREIGHT_RATES.get(route_key, {"rate_per_kg": AIRFREIGHT_DEFAULTS["default_rate_per_kg"], "transit_days": AIRFREIGHT_DEFAULTS["default_transit_days"]})

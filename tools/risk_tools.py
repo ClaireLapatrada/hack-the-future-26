@@ -27,6 +27,15 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from backend.models.tool_results import (
+    DisruptionProbabilityResult,
+    InventoryRunwayResult,
+    RevenueAtRiskExecutiveResult,
+    RevenueAtRiskResult,
+    SlaBreachResult,
+    SupplierExposureResult,
+)
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -99,7 +108,7 @@ def _load_profile() -> dict:
 def calculate_revenue_at_risk(
     affected_supplier_id: str,
     estimated_delay_days: int
-) -> dict:
+) -> RevenueAtRiskResult:
     """
     Calculate revenue at risk if a supplier is disrupted for N days.
     Cross-references ERP inventory runway against production line dependencies.
@@ -177,7 +186,7 @@ def calculate_revenue_at_risk(
     }
 
 
-def get_inventory_runway(item_id: str) -> dict:
+def get_inventory_runway(item_id: str) -> InventoryRunwayResult:
     """
     Get how many days of inventory remain for a specific item.
 
@@ -225,7 +234,7 @@ def get_inventory_runway(item_id: str) -> dict:
 def calculate_sla_breach_probability(
     production_halt_days: float,
     customer_name: str
-) -> dict:
+) -> SlaBreachResult:
     """
     Calculate probability of breaching a customer SLA given expected production halt.
 
@@ -256,7 +265,7 @@ def calculate_sla_breach_probability(
     }
 
 
-def get_supplier_exposure(supplier_id: str) -> dict:
+def get_supplier_exposure(supplier_id: str) -> SupplierExposureResult:
     """
     Get full operational exposure profile for a given supplier.
     Shows spend concentration, lead time, single-source risk.
@@ -339,7 +348,7 @@ def get_disruption_probability(
     climate_alerts_json: Optional[str] = None,
     shipping_lane_status_json: Optional[str] = None,
     supplier_health_json: Optional[str] = None,
-) -> dict:
+) -> DisruptionProbabilityResult:
     """
     Disruption probability scoring per Risk Intelligence Engine guideline.
 
@@ -555,7 +564,7 @@ def get_disruption_probability(
     }
 
 
-def estimate_revenue_at_risk_executive(operational_impact_json: Optional[str] = None) -> dict:
+def estimate_revenue_at_risk_executive(operational_impact_json: Optional[str] = None) -> RevenueAtRiskExecutiveResult:
     """
     Revenue-at-risk estimation for executives. Quantifies financial exposure from operational disruption.
 

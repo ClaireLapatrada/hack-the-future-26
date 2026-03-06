@@ -19,6 +19,12 @@ try:
 except ImportError:
     pass
 
+from backend.models.tool_results import (
+    LogEventResult,
+    RecurringPatternsResult,
+    SimilarDisruptionsResult,
+)
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -128,7 +134,7 @@ def retrieve_similar_disruptions(
     disruption_type: str,
     affected_region: str,
     top_k: int = 3
-) -> dict:
+) -> SimilarDisruptionsResult:
     """
     Retrieve historically similar disruptions and their mitigation outcomes.
     Uses Qdrant semantic search when QDRANT_URL and GEMINI_API_KEY are set;
@@ -245,7 +251,7 @@ def log_disruption_event(
     mitigation_action: str,
     estimated_cost_usd: float,
     outcome: str = "Pending"
-) -> dict:
+) -> LogEventResult:
     """
     Log a new disruption event to persistent memory for future learning.
     In production: writes to Firestore and triggers embedding update in Vector Search.
@@ -321,7 +327,7 @@ def log_disruption_event(
     }
 
 
-def get_recurring_risk_patterns() -> dict:
+def get_recurring_risk_patterns() -> RecurringPatternsResult:
     """
     Analyze disruption history to identify recurring risk patterns.
     Used to proactively warn about predictable future risks.

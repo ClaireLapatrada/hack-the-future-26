@@ -15,6 +15,8 @@ import random
 from pathlib import Path
 from typing import Optional
 
+from backend.models.tool_results import OperationalImpactResult
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -51,7 +53,7 @@ def get_operational_impact(
     affected_supplier_id: Optional[str] = None,
     disruption_days_assumed: Optional[int] = None,
     simulation_runs: int = 500,
-) -> dict:
+) -> OperationalImpactResult:
     """
     Estimate how disruption propagates through the production network.
 

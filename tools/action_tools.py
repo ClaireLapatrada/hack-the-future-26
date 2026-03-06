@@ -13,6 +13,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from backend.models.tool_results import (
+    ClientContextResult,
+    DraftEmailResult,
+    ErpReorderResult,
+    EscalateResult,
+    ExecuteRestockResult,
+    ExecutiveSummaryResult,
+    PoAdjustmentResult,
+    SlackAlertResult,
+    SubmitMitigationResult,
+    SubmitRestockResult,
+    WorkflowIntegrationResult,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
@@ -34,7 +48,7 @@ def draft_supplier_email(
     ask: str,
     sender_name: str = "Supply Chain Operations Team",
     company_name: str = "AutomotiveParts GmbH"
-) -> dict:
+) -> DraftEmailResult:
     """
     Draft a professional supplier outreach email based on disruption context.
     In production: integrates with Gmail API to send or save as draft.
@@ -107,7 +121,7 @@ def send_slack_alert(
     recommended_action: str,
     financial_exposure_usd: float,
     requires_approval: bool = True
-) -> dict:
+) -> SlackAlertResult:
     """
     Send a Slack escalation alert to operations or executive channel.
     In production: wraps Slack Web API (chat.postMessage).
@@ -172,7 +186,7 @@ def flag_erp_reorder_adjustment(
     new_quantity: int,
     reason: str,
     auto_execute: bool = False
-) -> dict:
+) -> ErpReorderResult:
     """
     Flag or execute a purchase order / reorder point adjustment in the ERP.
     In production: wraps SAP or Oracle ERP REST API.
@@ -214,7 +228,7 @@ def flag_erp_reorder_adjustment(
     }
 
 
-def get_po_adjustment_suggestions() -> dict:
+def get_po_adjustment_suggestions() -> PoAdjustmentResult:
     """
     Monitor inventory levels and suggest order restocks for human approval (or auto-execute if under threshold).
     Reads ERP inventory and compares to reorder/target buffer from config.
@@ -277,7 +291,7 @@ def submit_restock_for_approval(
     reason: str,
     estimated_cost_usd: float,
     title: str = "",
-) -> dict:
+) -> SubmitRestockResult:
     """Submit a restock suggestion for human approval. After approval, call execute_approved_restock(approval_id)."""
     approval_id = f"RST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     entry = {
@@ -312,7 +326,7 @@ def submit_restock_for_approval(
     return {"status": "success", "approval_id": approval_id, "message": "Restock submitted for approval.", "next_step": "Call execute_approved_restock(approval_id) after human approval."}
 
 
-def execute_approved_restock(approval_id: str) -> dict:
+def execute_approved_restock(approval_id: str) -> ExecuteRestockResult:
     """Execute a restock after human approval. Reads approval (type=restock, status=approved), then creates PO with auto_execute=True."""
     if not PENDING_APPROVALS_PATH.exists():
         return {"status": "error", "message": "No approvals file found"}
@@ -349,7 +363,7 @@ def escalate_to_management(
     problem_summary: str,
     decision_transparency_json: str = "{}",
     suggested_recipients: str = "VP Operations, CFO",
-) -> dict:
+) -> EscalateResult:
     """
     Escalate a problem to higher management. Include decision_transparency fields:
     what was detected, what the agent decided, why, what requires human decision.
@@ -386,14 +400,14 @@ def escalate_to_management(
     return {"status": "success", "escalation_id": escalation_id, "trigger_reason": trigger_reason, "suggested_recipients": suggested_recipients, "message": "Escalation created for higher management."}
 
 
-def get_client_context() -> dict:
+def get_client_context() -> ClientContextResult:
     """Return client company stance, sustainability goals, financial constraints, legal, SCM inputs for mitigation decisions."""
     config = _load_action_config()
     ctx = config.get("client_context", {})
     return {"status": "success", "client_context": ctx, "summary": "Company stance, sustainability, financial, legal, and SCM inputs."}
 
 
-def get_workflow_integration_status() -> dict:
+def get_workflow_integration_status() -> WorkflowIntegrationResult:
     """Return status of integrations with client supply chain software (ERP, Slack, email, WMS, TMS) for one-stop UI."""
     config = _load_action_config()
     integrations = config.get("workflow_integrations", {})
@@ -414,7 +428,7 @@ def submit_mitigation_for_approval(
     context_summary: str = "",
     scenario_name: str = "",
     incremental_cost_usd: float = 0.0,
-) -> dict:
+) -> SubmitMitigationResult:
     """
     Submit a mitigation recommendation for human approval. When the agent has
     run planning (e.g. rank_scenarios) and identified a mitigation that requires
@@ -484,7 +498,7 @@ def generate_executive_summary(
     risk_assessment_json: str,
     recommended_scenario_json: str,
     actions_taken_json: str
-) -> dict:
+) -> ExecutiveSummaryResult:
     """
     Generate a formatted executive summary document for leadership escalation.
 
