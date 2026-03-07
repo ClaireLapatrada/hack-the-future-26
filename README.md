@@ -126,8 +126,8 @@ State is stored in `config/active_disruption.json`. Run scripts from the project
 
 ## Our team
 
-- **1. Vicky Ongpipatanakul** — role
-- **2. Punnawit Payapvattanavong** — role
-- **3. Prima Limsuntrakul** — role
-- **4. Lapatrada Jaroonjetjumnong** — role
-- **5. Pera Kasemsripitak** — role
+- **1. Vicky Ongpipatanakul**
+- **2. Punnawit Payapvattanavong**
+- **3. Prima Limsuntrakul**
+- **4. Lapatrada Jaroonjetjumnong**
+- **5. Pera Kasemsripitak**
