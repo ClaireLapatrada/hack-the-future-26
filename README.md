@@ -22,14 +22,14 @@ cd htf26
 
 ### 2. Create a virtual environment (recommended)
 
-Using Python 3.11:
+Using Python 3.12:
 
 ```bash
-python3.11 -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate   # On Windows: venv\Scripts\activate
 ```
 
-If `python3.11` isn’t in your PATH, use the full path (e.g. `/opt/homebrew/bin/python3.11` on macOS with Homebrew).
+If `python3.12` isn’t in your PATH, use the full path (e.g. `/opt/homebrew/bin/python3.12` on macOS with Homebrew).
 
 ### 3. Install dependencies
 
