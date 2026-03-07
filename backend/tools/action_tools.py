@@ -13,6 +13,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from backend.tools.guardrails import (
+    GuardrailBlockedError,
+    redact_internal_data,
+    validate_severity,
+    validate_cost_usd,
+    validate_quantity,
+)
+from backend.tools.circuit_breaker import record_spend, BudgetExceededError
+from backend.tools.audit_log import append_audit
+
 from backend.models.tool_results import (
     ClientContextResult,
     DraftEmailResult,
@@ -47,19 +57,19 @@ def draft_supplier_email(
     disruption_context: str,
     ask: str,
     sender_name: str = "Supply Chain Operations Team",
-    company_name: str = "AutomotiveParts GmbH"
+    company_name: str = "Our Company",
 ) -> DraftEmailResult:
     """
     Draft a professional supplier outreach email based on disruption context.
     In production: integrates with Gmail API to send or save as draft.
 
     Args:
-        supplier_name: Name of supplier e.g. "SemiTech Asia"
+        supplier_name: Name of supplier
         supplier_contact: Email contact at supplier
         disruption_context: What disruption is occurring
         ask: What you need from the supplier (expedite, confirm, reroute, etc.)
-        sender_name: Name of person/team sending
-        company_name: Your company name
+        sender_name: Name of person/team sending (pass from manufacturer profile)
+        company_name: Your company name (pass from manufacturer profile)
     """
     timestamp = datetime.now().strftime("%B %d, %Y")
 
@@ -75,7 +85,7 @@ I am reaching out on behalf of {company_name} regarding a developing situation t
 **Our Request:**
 {ask}
 
-Given our production commitments to key OEM customers (BMW Group, Volkswagen AG), maintaining supply continuity is critical. We have active production lines that are dependent on your components, and any delay beyond our current safety stock window will result in line stoppages.
+Maintaining supply continuity is critical to our production commitments. We have active production lines that are dependent on your components, and any delay beyond our current safety stock window will result in line stoppages.
 
 We would appreciate your urgent response on the following:
 1. Current status of our open purchase orders
@@ -84,7 +94,7 @@ We would appreciate your urgent response on the following:
 
 We are prepared to discuss cost-sharing arrangements if alternative logistics options are required.
 
-Please respond to this message at your earliest convenience, or contact our procurement team directly at procurement@automotiveparts.de or +49 711 XXX-XXXX.
+Please respond to this message at your earliest convenience, or contact our procurement team directly.
 
 Thank you for your partnership and prompt attention to this matter.
 
@@ -99,18 +109,52 @@ This communication was flagged as URGENT by our supply chain risk monitoring sys
 Reference: SCR-{datetime.now().strftime('%Y%m%d-%H%M')}
 """
 
+    # G4: Redact internal financial data from supplier-facing content
+    redacted_body, was_redacted = redact_internal_data(email_body)
+    if was_redacted:
+        append_audit({
+            "agent_id": "action_tools",
+            "tool_name": "draft_supplier_email",
+            "arguments": {"supplier_name": supplier_name},
+            "outcome": "success",
+            "error_message": "Internal financial data was redacted from email body before returning.",
+            "duration_ms": 0.0,
+        })
+
+    # Semantic intent check: email must contain a concrete ask
+    import re as _re
+    body_lower = redacted_body.lower()
+    if not _re.search(r'\b(please|request|confirm|advise|respond|provide|contact)\b', body_lower):
+        append_audit({
+            "agent_id": "action_tools",
+            "tool_name": "draft_supplier_email",
+            "arguments": {"supplier_name": supplier_name},
+            "outcome": "blocked",
+            "error_message": "Email body does not contain a concrete ask — rejected by semantic intent check.",
+            "duration_ms": 0.0,
+        })
+        return {
+            "status": "error",
+            "message": "Email body must contain a concrete ask (please/request/confirm/advise by date).",
+        }
+
+    # Reject internal agent reasoning in email body
+    for phrase in ("as an ai", "as per my analysis", "the risk agent", "the planning agent"):
+        if phrase in body_lower:
+            redacted_body = redacted_body.replace(phrase, "[REMOVED]")
+
     return {
         "status": "success",
         "draft_email": {
             "to": supplier_contact,
             "subject": f"URGENT: Supply Continuity Request — {disruption_context[:50]}",
-            "body": email_body,
+            "body": redacted_body,
             "priority": "High",
-            "draft_timestamp": datetime.now().isoformat()
+            "draft_timestamp": datetime.now().isoformat(),
         },
         "next_step": "Review draft and approve to send via Gmail API",
         "auto_send_eligible": False,  # Always human-approved for supplier comms
-        "reference_id": f"SCR-{datetime.now().strftime('%Y%m%d-%H%M')}"
+        "reference_id": f"SCR-{datetime.now().strftime('%Y%m%d-%H%M')}",
     }
 
 
@@ -185,10 +229,11 @@ def flag_erp_reorder_adjustment(
     adjustment_type: str,
     new_quantity: int,
     reason: str,
-    auto_execute: bool = False
 ) -> ErpReorderResult:
     """
-    Flag or execute a purchase order / reorder point adjustment in the ERP.
+    Flag a purchase order / reorder point adjustment in the ERP for approval.
+    All ERP adjustments require human approval — auto-execute path has been removed
+    to enforce the approval queue (Phase 6 guardrail).
     In production: wraps SAP or Oracle ERP REST API.
 
     Args:
@@ -197,14 +242,19 @@ def flag_erp_reorder_adjustment(
                          "pause_po", "expedite_po"
         new_quantity: New quantity value
         reason: Reason for adjustment (used in ERP change log)
-        auto_execute: If True, auto-submits. If False, creates pending approval.
     """
+    # Input validation
+    try:
+        validate_quantity(new_quantity, "new_quantity")
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
+
     adjustment_descriptions = {
         "increase_reorder_point": f"Reorder point raised to {new_quantity} units",
         "emergency_po": f"Emergency purchase order created for {new_quantity} units",
         "increase_buffer": f"Safety stock target increased to {new_quantity} units",
         "pause_po": f"Open PO paused — {new_quantity} units on hold",
-        "expedite_po": f"Expedite flag set on existing PO — priority: {new_quantity}"
+        "expedite_po": f"Expedite flag set on existing PO — priority: {new_quantity}",
     }
 
     erp_change_record = {
@@ -214,17 +264,25 @@ def flag_erp_reorder_adjustment(
         "description": adjustment_descriptions.get(adjustment_type, f"Adjustment: {adjustment_type}"),
         "quantity": new_quantity,
         "reason": reason,
-        "status": "EXECUTED" if auto_execute else "PENDING_APPROVAL",
+        "status": "PENDING_APPROVAL",  # auto_execute path removed — all ERP changes require approval
         "created_at": datetime.now().isoformat(),
         "created_by": "Supply Chain Resilience Agent",
-        "approval_required": not auto_execute
+        "approval_required": True,
     }
+
+    append_audit({
+        "agent_id": "action_tools",
+        "tool_name": "flag_erp_reorder_adjustment",
+        "arguments": {"item_id": item_id, "adjustment_type": adjustment_type, "new_quantity": new_quantity},
+        "outcome": "success",
+        "duration_ms": 0.0,
+    })
 
     return {
         "status": "success",
         "erp_change": erp_change_record,
-        "next_step": "Auto-executed in ERP" if auto_execute else "Awaiting procurement manager approval",
-        "mock_note": "In production: submitted via SAP REST API or Oracle Fusion"
+        "next_step": "Awaiting procurement manager approval",
+        "mock_note": "In production: submitted via SAP REST API or Oracle Fusion",
     }
 
 
@@ -246,7 +304,6 @@ def get_po_adjustment_suggestions() -> PoAdjustmentResult:
     with open(erp_path, encoding="utf-8") as f:
         erp = json.load(f)
     inventory = erp.get("inventory") or []
-    unit_cost_map = {"SEMI-MCU-32": 12.5, "SEMI-SENSOR-01": 8.0, "STEEL-BRK-07": 17.0, "STEEL-FRAME-02": 22.0}
 
     suggestions = []
     for item in inventory:
@@ -262,7 +319,7 @@ def get_po_adjustment_suggestions() -> PoAdjustmentResult:
         suggested_qty = min(int(daily_consumption * shortfall_days), int(daily_consumption * (target_days + 14)))
         if suggested_qty <= 0:
             suggested_qty = int(daily_consumption * 14)
-        unit_cost = unit_cost_map.get(item_id, 12.0)
+        unit_cost = float(item.get("unit_cost") or 10.0)
         estimated_cost_usd = suggested_qty * unit_cost
         auto_eligible = estimated_cost_usd <= threshold_usd and suggested_qty <= max_auto_qty
         reason = f"Days on hand ({days_on_hand}d) below reorder ({reorder_days}d); target buffer {target_days}d."
@@ -293,7 +350,24 @@ def submit_restock_for_approval(
     title: str = "",
 ) -> SubmitRestockResult:
     """Submit a restock suggestion for human approval. After approval, call execute_approved_restock(approval_id)."""
+    # Input validation
+    try:
+        validate_quantity(suggested_quantity, "suggested_quantity")
+        validate_cost_usd(estimated_cost_usd, "estimated_cost_usd")
+    except Exception as exc:
+        return {"status": "error", "message": str(exc), "approval_id": "", "next_step": ""}
+
     approval_id = f"RST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    # Compute expiry from rules config (approvalTimeout hours, default 4h)
+    _timeout_hours = 4.0
+    try:
+        _cfg = _load_action_config()
+        _timeout_hours = float(_cfg.get("approval_timeout_hours", 4.0))
+    except Exception:
+        pass
+    from datetime import timedelta
+    _expires_at = (datetime.now() + timedelta(hours=_timeout_hours)).isoformat()
+
     entry = {
         "id": approval_id,
         "type": "restock",
@@ -305,6 +379,7 @@ def submit_restock_for_approval(
         "auditLog": [{"time": "—", "text": reason}, {"time": "—", "text": f"Estimated cost: ${estimated_cost_usd:,.0f}"}],
         "status": "pending",
         "createdAt": datetime.now().isoformat(),
+        "expires_at": _expires_at,
         "item_id": item_id,
         "suggested_quantity": suggested_quantity,
         "estimated_cost_usd": estimated_cost_usd,
@@ -327,7 +402,14 @@ def submit_restock_for_approval(
 
 
 def execute_approved_restock(approval_id: str) -> ExecuteRestockResult:
-    """Execute a restock after human approval. Reads approval (type=restock, status=approved), then creates PO with auto_execute=True."""
+    """
+    Execute a restock after human approval.
+
+    Guardrails enforced at execution time (not just at submission):
+    - G2: Verify qty × unit_cost is coherent with stored estimated_cost_usd.
+    - G1: Record spend against pipeline budget cap (raises BudgetExceededError if exceeded).
+    - Requires status == "approved" — pending/rejected approvals are blocked.
+    """
     if not PENDING_APPROVALS_PATH.exists():
         return {"status": "error", "message": "No approvals file found"}
     try:
@@ -341,19 +423,109 @@ def execute_approved_restock(approval_id: str) -> ExecuteRestockResult:
         return {"status": "error", "message": f"Approval {approval_id} not found"}
     if entry.get("type") != "restock":
         return {"status": "error", "message": f"Approval {approval_id} is not a restock"}
+    # Guardrail: must be human-approved
     if entry.get("status") != "approved":
+        append_audit({
+            "agent_id": "action_tools",
+            "tool_name": "execute_approved_restock",
+            "arguments": {"approval_id": approval_id},
+            "outcome": "blocked",
+            "error_message": f"Approval {approval_id} not approved (status={entry.get('status')})",
+            "duration_ms": 0.0,
+        })
         return {"status": "error", "message": f"Approval {approval_id} not approved (status={entry.get('status')})"}
+
     item_id = entry.get("item_id", "")
-    qty = entry.get("suggested_quantity", 0)
+    qty = int(entry.get("suggested_quantity") or 0)
+    estimated_cost = float(entry.get("estimated_cost_usd") or 0.0)
     reason = entry.get("adjustment_reason", "Approved restock")
-    result = flag_erp_reorder_adjustment(item_id=item_id, adjustment_type="emergency_po", new_quantity=qty, reason=reason, auto_execute=True)
+
+    # G2: PO quantity/cost coherence check at execution time
+    config = _load_action_config()
+    po_cfg = config.get("po_adjustment", {})
+    threshold_usd = float(po_cfg.get("auto_restock_threshold_usd", 15000))
+    # Look up unit cost from ERP data; fall back to a generic default
+    erp_unit_cost = 10.0
+    erp_path = Path(os.getenv("ERP_JSON_PATH", str(DATA_DIR / "mock_erp.json")))
+    if erp_path.exists():
+        try:
+            with open(erp_path, encoding="utf-8") as _f:
+                _erp = json.load(_f)
+            _inv = {i["item_id"]: i for i in _erp.get("inventory") or [] if "item_id" in i}
+            if item_id in _inv and _inv[item_id].get("unit_cost"):
+                erp_unit_cost = float(_inv[item_id]["unit_cost"])
+        except Exception:
+            pass
+    unit_cost = erp_unit_cost
+    computed_cost = qty * unit_cost
+    # Allow 20% deviation (ERP pricing may differ slightly from computed cost)
+    if estimated_cost > 0 and abs(computed_cost - estimated_cost) / max(estimated_cost, 1) > 0.20:
+        msg = (
+            f"G2 coherence check failed: stored estimated_cost_usd={estimated_cost:,.2f} "
+            f"differs >20% from computed qty×unit_cost={computed_cost:,.2f} "
+            f"(qty={qty}, unit_cost={unit_cost}). Execution blocked."
+        )
+        append_audit({
+            "agent_id": "action_tools",
+            "tool_name": "execute_approved_restock",
+            "arguments": {"approval_id": approval_id, "item_id": item_id, "qty": qty},
+            "outcome": "blocked",
+            "error_message": msg,
+            "duration_ms": 0.0,
+        })
+        return {"status": "error", "message": msg}
+
+    # G1: Budget guard — record spend against pipeline session cap
+    try:
+        record_spend(estimated_cost)
+    except BudgetExceededError as exc:
+        append_audit({
+            "agent_id": "action_tools",
+            "tool_name": "execute_approved_restock",
+            "arguments": {"approval_id": approval_id, "estimated_cost_usd": estimated_cost},
+            "outcome": "blocked",
+            "error_message": str(exc),
+            "duration_ms": 0.0,
+        })
+        return {"status": "error", "message": str(exc)}
+
+    # Execute: create the ERP record directly as EXECUTED (approval already obtained)
+    from datetime import datetime as _dt
+    erp_change_record = {
+        "change_id": f"ERP-CHG-{_dt.now().strftime('%Y%m%d%H%M%S')}",
+        "item_id": item_id,
+        "adjustment_type": "emergency_po",
+        "description": f"Emergency purchase order created for {qty} units (approved restock)",
+        "quantity": qty,
+        "reason": reason,
+        "status": "EXECUTED",
+        "created_at": _dt.now().isoformat(),
+        "created_by": "Supply Chain Resilience Agent (post-human-approval)",
+        "approval_required": False,
+        "approval_id": approval_id,
+    }
+    result = {
+        "status": "success",
+        "erp_change": erp_change_record,
+        "next_step": "PO created in ERP",
+        "mock_note": "In production: submitted via SAP REST API or Oracle Fusion",
+    }
+
     for e in items:
         if e.get("id") == approval_id:
             e["status"] = "executed"
-            e["executed_at"] = datetime.now().isoformat()
+            e["executed_at"] = _dt.now().isoformat()
             break
     with open(PENDING_APPROVALS_PATH, "w", encoding="utf-8") as f:
         json.dump(items, f, indent=2)
+
+    append_audit({
+        "agent_id": "action_tools",
+        "tool_name": "execute_approved_restock",
+        "arguments": {"approval_id": approval_id, "item_id": item_id, "qty": qty, "cost_usd": estimated_cost},
+        "outcome": "success",
+        "duration_ms": 0.0,
+    })
     return {"status": "success", "approval_id": approval_id, "erp_result": result, "message": f"Restock executed: {item_id} — {qty} units."}
 
 
@@ -557,7 +729,7 @@ DECISION REQUIRED
 Please authorize the recommended mitigation strategy within 4 hours to prevent
 production line stoppage. Agent is standing by for executive approval.
 
-Contact: AI Operations Co-Pilot | supply-chain-agent@automotiveparts.de
+Contact: AI Operations Co-Pilot
 ═══════════════════════════════════════════════════════════════
 """
 

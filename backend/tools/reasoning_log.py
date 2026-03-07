@@ -164,7 +164,36 @@ def get_entries() -> list[dict]:
 
 
 def with_reasoning_log(func):
-    """Decorator: log domain-specific type for tool call, then RESULT after. Preserves signature for ADK AFC."""
+    """
+    Decorator: log domain-specific type for tool call, then RESULT after.
+    Also integrates:
+    - Circuit breaker (Phase 7): blocks calls when a tool has failed repeatedly.
+    - Audit log (Phase 8): every call (success or error) is appended to audit_log.jsonl.
+    Preserves signature for ADK AFC.
+    """
+    # Lazy imports to avoid circular import at module load time
+    def _get_circuit_breaker(agent_id: str, tool_name: str):
+        try:
+            from backend.tools.circuit_breaker import get_breaker
+            return get_breaker(agent_id, tool_name)
+        except Exception:
+            return None
+
+    def _audit(agent_id, tool_name, arguments, outcome, error_message=None, duration_ms=0.0):
+        try:
+            from backend.tools.audit_log import append_audit
+            entry = {
+                "agent_id": agent_id,
+                "tool_name": tool_name,
+                "arguments": arguments,
+                "outcome": outcome,
+                "duration_ms": duration_ms,
+            }
+            if error_message is not None:
+                entry["error_message"] = error_message
+            append_audit(entry)
+        except Exception:
+            pass
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -178,17 +207,34 @@ def with_reasoning_log(func):
             bound = sig.bind(*args, **kwargs)
             bound.apply_defaults()
             args_str = ", ".join(f"{k}={repr(v)}" for k, v in bound.arguments.items())
+            bound_args = dict(bound.arguments)
         except Exception:
             args_str = "..."
+            bound_args = {}
         tool_call = f"{func.__module__}.{func.__name__}({args_str})"
         # Map module to domain tag (perception→OBSERVE, risk→REASONING, etc.)
         module_name = (func.__module__ or "").split(".")[-1] if func.__module__ else ""
         log_type = _TOOL_MODULE_TO_TYPE.get(module_name, "TOOL")
         category = _ACTION_TOOL_CATEGORIES.get(func.__name__) if log_type == "ACTION" else None
+
+        # Circuit breaker check
+        agent_id = module_name or "unknown"
+        tool_name = func.__name__
+        cb = _get_circuit_breaker(agent_id, tool_name)
+        if cb and cb.is_open():
+            err_msg = f"Circuit breaker OPEN for {agent_id}.{tool_name} — too many consecutive failures."
+            append_entry(log_type, tool_call, category=category)
+            append_entry("RESULT", f"Error: {err_msg}")
+            flush()
+            _audit(agent_id, tool_name, bound_args, "blocked", error_message=err_msg)
+            raise RuntimeError(err_msg)
+
         append_entry(log_type, tool_call, category=category)
         flush()
+        _t0 = time.time()
         try:
             result = func(*args, **kwargs)
+            duration_ms = (time.time() - _t0) * 1000
             if isinstance(result, dict):
                 summary = result.get("status", "") or result.get("message", "")
                 if not summary and result:
@@ -204,14 +250,22 @@ def with_reasoning_log(func):
                 try:
                     detail = json.dumps(result, indent=2)[:8000]
                 except TypeError:
-                    # Fallback if result is not fully JSON-serializable
                     detail = str(result)[:8000]
             append_entry("RESULT", summary or "(ok)", category=category, meta=res_meta, detail=detail)
             flush()
+            # Record circuit breaker success and write audit entry
+            if cb:
+                cb.record_success()
+            outcome = "error" if (isinstance(result, dict) and result.get("status") == "error") else "success"
+            _audit(agent_id, tool_name, bound_args, outcome, duration_ms=duration_ms)
             return result
         except Exception as e:
+            duration_ms = (time.time() - _t0) * 1000
             append_entry("RESULT", f"Error: {e}")
             flush()
+            if cb:
+                cb.record_failure()
+            _audit(agent_id, tool_name, bound_args, "error", error_message=str(e), duration_ms=duration_ms)
             raise
 
     import inspect

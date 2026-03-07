@@ -64,12 +64,12 @@ def run_scenarios(body: ScenarioRunRequest = Body(...)) -> Dict[str, Any]:
     buffer_days = body.bufferDays
     risk_appetite = body.riskAppetite
 
+    import json
     disruption_days = 10
-    affected_item_id = "SEMI-MCU-32"
+    affected_item_id = None
     quantity_needed = 4000
 
     if event_id:
-        import json
         # Try to get disruption details from history
         history_path = settings.data_dir / "mock_disruption_history.json"
         if history_path.exists():
@@ -81,24 +81,27 @@ def run_scenarios(body: ScenarioRunRequest = Body(...)) -> Dict[str, Any]:
             except Exception:
                 pass
 
-        # Pick first item with daily consumption from ERP to drive quantity
-        erp_path = settings.effective_erp_path
-        if erp_path.exists():
-            try:
-                erp = json.loads(erp_path.read_text(encoding="utf-8"))
-                inventory = erp.get("inventory") or []
-                item = next(
-                    (i for i in inventory if i.get("daily_consumption") and i["daily_consumption"] > 0),
-                    None,
+    # Pick first critical item with daily consumption from ERP
+    erp_path = settings.effective_erp_path
+    if erp_path.exists():
+        try:
+            erp = json.loads(erp_path.read_text(encoding="utf-8"))
+            inventory = erp.get("inventory") or []
+            item = next(
+                (i for i in inventory if i.get("daily_consumption") and i["daily_consumption"] > 0),
+                None,
+            )
+            if item:
+                affected_item_id = item["item_id"]
+                quantity_needed = max(
+                    1000,
+                    int(disruption_days * item["daily_consumption"] * 0.8 + 0.5),
                 )
-                if item:
-                    affected_item_id = item["item_id"]
-                    quantity_needed = max(
-                        1000,
-                        int(disruption_days * item["daily_consumption"] * 0.8 + 0.5),
-                    )
-            except Exception:
-                pass
+        except Exception:
+            pass
+
+    if not affected_item_id:
+        affected_item_id = "UNKNOWN-ITEM"
 
     scenario_types = ["airfreight", "buffer_build", "alternate_supplier"]
     simulated = []

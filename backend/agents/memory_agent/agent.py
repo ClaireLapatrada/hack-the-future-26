@@ -68,6 +68,12 @@ Recommendation informed by history: [brief guidance]
 
 Be concise. The Memory Brief should be 10-15 lines max.
 Other agents will use this to make better decisions.
+
+## CONSTRAINTS (MUST NOT)
+- Do NOT modify or delete existing disruption history records.
+- Do NOT log an event unless you have been explicitly passed the completed disruption context from the orchestrator.
+- Do NOT invent historical cases; report "no similar cases found" if retrieve_similar_disruptions returns empty.
+- Do NOT include personally identifiable information or exact internal financial figures in logged event descriptions.
 """
 
 memory_agent = Agent(
