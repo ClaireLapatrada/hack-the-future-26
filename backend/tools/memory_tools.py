@@ -24,6 +24,7 @@ from backend.models.tool_results import (
     RecurringPatternsResult,
     SimilarDisruptionsResult,
 )
+from backend.tools.guardrails import sanitize_external_content
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -211,16 +212,20 @@ def retrieve_similar_disruptions(
 
     insights = []
     for case in top_cases:
+        # Phase 1: Sanitize historical text — may contain injected content from
+        # previously logged tainted perception output
         insights.append({
             "event_id": case["event_id"],
             "date": case["date"],
             "type": case["type"],
-            "description": case["description"],
-            "what_worked": case["mitigation_taken"]["action"],
-            "outcome": case["mitigation_taken"]["outcome"],
-            "cost_usd": case["mitigation_taken"]["cost_usd"],
-            "actual_loss_usd": case["impact"]["actual_revenue_lost_usd"],
-            "lesson": case["lessons_learned"]
+            "description": sanitize_external_content(case.get("description", ""), max_chars=1000),
+            "what_worked": sanitize_external_content(
+                case.get("mitigation_taken", {}).get("action", ""), max_chars=500
+            ),
+            "outcome": case.get("mitigation_taken", {}).get("outcome", ""),
+            "cost_usd": case.get("mitigation_taken", {}).get("cost_usd"),
+            "actual_loss_usd": case.get("impact", {}).get("actual_revenue_lost_usd"),
+            "lesson": sanitize_external_content(case.get("lessons_learned", ""), max_chars=500),
         })
 
     summary = ""

@@ -38,12 +38,58 @@ def update_rules(
     """
     Merge-update initialValues.
 
-    Only the keys present in the request body are updated; all others are preserved.
+    Only keys defined in the RulesConfig sections schema are accepted (G6 allowlist).
+    Unknown keys are rejected with 422.  Value types are also validated against the
+    RuleDef schema (slider → numeric in range, toggle → boolean, input → string).
     """
     if not body.initialValues:
         raise HTTPException(status_code=400, detail="Missing or invalid initialValues")
 
     config = store.load_rules()
+
+    # G6: Build allowlist from all RuleDef keys across all sections
+    allowed_keys: Dict[str, Any] = {}  # key → RuleDef
+    for section in config.sections:
+        for rule_def in section.rules:
+            allowed_keys[rule_def.key] = rule_def
+
+    unknown_keys = [k for k in body.initialValues if k not in allowed_keys]
+    if unknown_keys:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Unknown rule keys rejected (not in schema allowlist)",
+                "unknown_keys": unknown_keys,
+                "allowed_keys": list(allowed_keys.keys()),
+            },
+        )
+
+    # G6: Type-validate submitted values against their RuleDef schema
+    type_errors: list[str] = []
+    for key, value in body.initialValues.items():
+        rule_def = allowed_keys[key]
+        if rule_def.type == "slider":
+            if not isinstance(value, (int, float)):
+                type_errors.append(f"'{key}': expected numeric (slider), got {type(value).__name__}")
+            elif not (rule_def.min <= float(value) <= rule_def.max):
+                type_errors.append(
+                    f"'{key}'={value} out of range [{rule_def.min}, {rule_def.max}]"
+                )
+        elif rule_def.type == "toggle":
+            if not isinstance(value, bool):
+                type_errors.append(f"'{key}': expected boolean (toggle), got {type(value).__name__}")
+        elif rule_def.type == "input":
+            if not isinstance(value, str):
+                type_errors.append(f"'{key}': expected string (input), got {type(value).__name__}")
+            elif len(value) > 500:
+                type_errors.append(f"'{key}': string exceeds 500 character limit")
+
+    if type_errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "Rule value type validation failed", "type_errors": type_errors},
+        )
+
     merged = {**config.initialValues, **body.initialValues}
     updated = RulesConfig(sections=config.sections, initialValues=merged)
     store.save_rules(updated)

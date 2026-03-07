@@ -79,7 +79,7 @@ def run_scenario_simulation(
     disruption_days_min: int = 5,
     disruption_days_max: int = 15,
     quantity_needed: int = 5000,
-    affected_item_id: str = "SEMI-MCU-32",
+    affected_item_id: str = "",
     risk_appetite: str = "medium",
     monte_carlo_runs: int = 200,
 ) -> ScenarioSimulationResult:
@@ -227,7 +227,7 @@ def rank_scenarios(scenarios_json: str, risk_appetite: str = "low") -> RankScena
 def evaluate_mitigation_tradeoffs(
     disruption_days: int = 10,
     quantity_needed: int = 5000,
-    affected_item_id: str = "SEMI-MCU-32",
+    affected_item_id: str = "",
     risk_appetite: str = "medium",
 ) -> MitigationTradeoffsResult:
     """Multi-variable trade-off: delegates to run_scenario_simulation and returns recommended strategy, cost vs resilience, service-level impact."""
@@ -422,7 +422,7 @@ def _stockout_probability_from_days(days_on_hand: float) -> float:
 
 
 def recommend_buffer_stock(
-    item_id: str = "SEMI-MCU-32",
+    item_id: str = "",
     service_level_target_pct: Optional[float] = None,
     holding_cost_pct_per_year: Optional[float] = None,
     stockout_cost_per_unit: Optional[float] = None,

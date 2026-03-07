@@ -30,6 +30,7 @@ from backend.models.tool_results import (
     ShippingLaneStatusResult,
     SupplierHealthResult,
 )
+from backend.tools.guardrails import sanitize_external_content, validate_supply_chain_relevance
 
 
 def _call_google_custom_search(query: str, num: int = 10) -> dict | None:
@@ -85,8 +86,21 @@ def search_disruption_news(query: str) -> DisruptionNewsResult:
         }
     items = data.get("items") or []
     signals = []
+    dropped_count = 0
     for it in items:
+        raw_title = it.get("title") or ""
         snippet = it.get("snippet") or ""
+        combined = f"{raw_title} {snippet}"
+
+        # Phase 1: Drop articles that don't pass supply-chain relevance check
+        if not validate_supply_chain_relevance(combined):
+            dropped_count += 1
+            continue
+
+        # Phase 1: Sanitize title and snippet to neutralise injection patterns
+        safe_title = sanitize_external_content(raw_title, max_chars=200)
+        safe_snippet = sanitize_external_content(snippet, max_chars=500)
+
         # Optional: extract date from pagemap if present
         published = datetime.now().isoformat()
         pagemap = it.get("pagemap") or {}
@@ -97,11 +111,11 @@ def search_disruption_news(query: str) -> DisruptionNewsResult:
                     published = meta[date_key]
                     break
         signals.append({
-            "title": it.get("title") or "",
+            "title": safe_title,
             "source": it.get("displayLink") or it.get("link", "")[:50],
             "published": published,
             "url": it.get("link") or "",
-            "summary": snippet,
+            "summary": safe_snippet,
             "classified_type": None,
             "severity": None,
             "confidence_score": None,
@@ -292,7 +306,9 @@ def get_climate_alerts(regions: list[str]) -> ClimateAlertsResult:
         for ev in events:
             if not _event_in_region(ev, bbox):
                 continue
-            title = ev.get("title") or "Unknown Event"
+            raw_title = ev.get("title") or "Unknown Event"
+            # Phase 1: Sanitize EONET event title (external data)
+            title = sanitize_external_content(raw_title, max_chars=100)
             categories = ev.get("categories") or []
             cat_title = categories[0].get("title", "Natural Event") if categories else "Natural Event"
             event_type = cat_title if isinstance(cat_title, str) else "Natural Event"

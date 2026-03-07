@@ -42,11 +42,24 @@ def _read_json(path: Path) -> object:
         return json.load(f)
 
 
-def _write_json(path: Path, data: object) -> None:
+def _write_json(path: Path, data: object, _operation: str = "write") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with _lock_for(path):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+    # Phase 8: append to audit log after every successful write
+    try:
+        from backend.tools.audit_log import append_audit
+        record_count = len(data) if isinstance(data, list) else 1
+        append_audit({
+            "agent_id": "data_store",
+            "tool_name": _operation,
+            "arguments": {"path": str(path), "record_count": record_count},
+            "outcome": "success",
+            "duration_ms": 0.0,
+        })
+    except Exception:
+        pass
 
 
 class DataStore:
@@ -79,6 +92,7 @@ class DataStore:
         _write_json(
             self._cfg.active_disruption_path,
             config.model_dump(),
+            _operation="save_active_disruption",
         )
 
     # ── Disruption history ────────────────────────────────────────────────
@@ -129,6 +143,7 @@ class DataStore:
         _write_json(
             self._cfg.pending_approvals_path,
             [a.model_dump() for a in items],
+            _operation="save_pending_approvals",
         )
 
     def append_approval(self, entry: ApprovalEntry) -> None:

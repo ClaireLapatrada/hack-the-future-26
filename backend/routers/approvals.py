@@ -178,7 +178,52 @@ def update_approval(
             idx = next((i for i, e in enumerate(approvals) if e.id == id_), None)
         if idx is None:
             raise HTTPException(status_code=404, detail="Approval not found")
-        approvals[idx].status = ApprovalStatus.approved if action == "approve" else ApprovalStatus.rejected
+
+        entry = approvals[idx]
+
+        # Phase 5: Expiry check — reject approvals past their expires_at
+        if action == "approve" and entry.expires_at:
+            try:
+                expires_dt = datetime.fromisoformat(entry.expires_at.replace("Z", "+00:00"))
+                now_dt = datetime.now(timezone.utc)
+                if now_dt > expires_dt:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Approval {id_} has expired (expired_at={entry.expires_at}). Create a new approval.",
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                pass  # Unparseable date — allow through
+
+        # Phase 5: Dual approval for CRITICAL severity
+        if action == "approve":
+            rules_cfg: dict = {}
+            try:
+                rules_cfg = store.load_rules().initialValues
+            except Exception:
+                pass
+            dual_required = bool(rules_cfg.get("dualApprovalCritical", False))
+            is_critical = (entry.severity or "").upper() == "CRITICAL"
+
+            if is_critical and dual_required:
+                # Require two approval actions: first increments count, second finalises
+                new_count = (entry.approval_count or 0) + 1
+                entry.approval_count = new_count
+                if new_count < 2:
+                    store.save_pending_approvals(approvals)
+                    return {
+                        "ok": True,
+                        "id": id_,
+                        "status": "pending_second_approval",
+                        "message": "CRITICAL approval requires two independent approvals. First approval recorded.",
+                    }
+                # Second approval — finalise
+                entry.status = ApprovalStatus.approved
+                store.save_pending_approvals(approvals)
+                return {"ok": True, "id": id_, "status": entry.status.value}
+
+        entry.status = ApprovalStatus.approved if action == "approve" else ApprovalStatus.rejected
         store.save_pending_approvals(approvals)
         return {"ok": True, "id": id_, "status": approvals[idx].status.value}
 

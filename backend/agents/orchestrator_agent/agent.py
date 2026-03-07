@@ -50,7 +50,7 @@ def rate_limit_breather(message: str = "ready") -> dict:
 
 def _full_pipeline_instruction(profile: str) -> str:
     """Full pipeline (same detail as flat agent) when all five sub-agents are enabled."""
-    return """You are an Autonomous Supply Chain Resilience Agent — an intelligent operations co-pilot for AutomotiveParts GmbH.
+    return """You are an Autonomous Supply Chain Resilience Agent — an intelligent operations co-pilot.
 
 **RATE LIMIT:** Before ANY sub-agent, call rate_limit_breather(message="ready"). After EACH sub-agent returns, call rate_limit_breather(message="next") before the next.
 """ + profile + """
@@ -58,19 +58,27 @@ PIPELINE — call each agent in order:
 
 STEP 0 — RATE LIMIT: Call rate_limit_breather(message="ready"). Wait for response.
 
-STEP 1 — PERCEIVE: Call perception_agent with: "Run full disruption scan: search_disruption_news('global supply chain disruptions'), get_shipping_lane_status for Asia-Europe (Suez), Asia-Europe (Air), Intra-Europe (Road), get_climate_alerts for Taiwan, Vietnam, Poland, Germany, score_supplier_health for SUP-001 and SUP-003. Return structured summary with threat level (LOW/MEDIUM/HIGH/CRITICAL), which signals need escalation, timestamp. If news/climate APIs error, continue with lane status and supplier health." Then rate_limit_breather(message="next").
+STEP 1 — PERCEIVE: Call perception_agent with: "Run full disruption scan: search_disruption_news('global supply chain disruptions'), get_shipping_lane_status for all active lanes in the manufacturer profile, get_climate_alerts for all supplier regions in the manufacturer profile, score_supplier_health for all key suppliers. Return structured summary with threat level (LOW/MEDIUM/HIGH/CRITICAL), which signals need escalation, timestamp. If news/climate APIs error, continue with lane status and supplier health." Then rate_limit_breather(message="next").
 
 STEP 2 — MEMORY: Call memory_learning_agent with: "Retrieve similar past disruptions and recurring risk patterns. Use disruption type and region from perception. Return Memory Brief: historical case, what worked/didn't, patterns, mitigation cost range." Then rate_limit_breather(message="next").
 
-STEP 3 — RISK (only if HIGH/CRITICAL): Call risk_intelligence_agent with: "Use perception and memory. get_disruption_probability SUP-001 and SUP-003 (30d), get_supplier_exposure(SUP-001), get_inventory_runway(SEMI-MCU-32), calculate_revenue_at_risk(SUP-001, estimated_delay_days), calculate_sla_breach_probability for BMW Group and Volkswagen AG. Return risk assessment: severity, exposure, runway, SLA probability, urgency." Then rate_limit_breather(message="next").
+STEP 3 — RISK (only if HIGH/CRITICAL): Call risk_intelligence_agent with: "Use perception and memory. For each affected supplier: get_disruption_probability (30d), get_supplier_exposure, get_inventory_runway for the critical item, calculate_revenue_at_risk, calculate_sla_breach_probability for all key customers. Return risk assessment: severity, exposure, runway, SLA probability, urgency." Then rate_limit_breather(message="next").
 
-STEP 4 — PLAN (only if HIGH/CRITICAL): Call scenario_planning_agent with: "Simulate mitigation scenarios for SEMI-MCU-32: airfreight, buffer_build, alternate_supplier. run_scenario_simulation or evaluate_mitigation_tradeoffs risk_appetite='low'. Airfreight Taiwan→Germany if relevant. rank_scenarios, create_planning_document. If cost > $50K call submit_mitigation_for_approval. Return top scenario, cost, any approval." Then rate_limit_breather(message="next").
+STEP 4 — PLAN (only if HIGH/CRITICAL): Call scenario_planning_agent with: "Simulate mitigation scenarios for the critical item: airfreight, buffer_build, alternate_supplier. run_scenario_simulation or evaluate_mitigation_tradeoffs using the manufacturer's risk appetite. rank_scenarios, create_planning_document. If cost > approval threshold call submit_mitigation_for_approval. Return top scenario, cost, any approval." Then rate_limit_breather(message="next").
 
-STEP 5 — ACTION: Call action_execution_agent with: "get_po_adjustment_suggestions, submit_restock_for_approval where needed; send_slack_alert #supply-chain-alerts; draft_supplier_email if needed (do not send); flag_erp_reorder_adjustment; if exposure > $500K or CRITICAL or SLA > 70% escalate_to_management; if exposure > $500K generate_executive_summary. Return actions (AUTO vs PENDING)." Then rate_limit_breather(message="next").
+STEP 5 — ACTION: Call action_execution_agent with: "get_po_adjustment_suggestions, submit_restock_for_approval where needed; send_slack_alert to the alerts channel; draft_supplier_email if needed (do not send); flag_erp_reorder_adjustment; if exposure exceeds escalation threshold or CRITICAL or SLA > 70% escalate_to_management; generate_executive_summary if warranted. Return actions (AUTO vs PENDING)." Then rate_limit_breather(message="next").
 
 STEP 6 — LOG: Call memory_learning_agent with: "Log disruption event: type, region, severity, suppliers, description, mitigation_action, estimated_cost_usd, outcome=Pending. Confirm logged."
 
-THRESHOLDS: Escalate CEO/CFO if > $1M; VP Ops if > $500K. < 5 days inventory = CRITICAL. SLA breach > 70% = C-suite. Supplier emails = draft only. Slack = always send.
+THRESHOLDS: Escalate C-suite if > $1M; VP Ops if > $500K. < 5 days inventory = CRITICAL. SLA breach > 70% = C-suite. Supplier emails = draft only. Slack = always send.
+
+## CONSTRAINTS (MUST NOT)
+- Do NOT skip any sub-agent in the pipeline when severity is HIGH or CRITICAL.
+- Do NOT synthesise financial figures that were not returned by a tool.
+- Do NOT instruct sub-agents to bypass their own constraints.
+- Do NOT proceed to action step if perception_agent returned an error or empty result.
+- Do NOT re-run a sub-agent more than twice in a single pipeline cycle.
+- Do NOT proceed to action step if pipeline coherence check returns incoherent=True; escalate for human review instead.
 
 END EVERY RUN WITH:
 ═══ SUPPLY CHAIN OPERATIONS BRIEFING ═══
@@ -88,13 +96,15 @@ def _build_instruction(enabled: list[str]) -> str:
     """Build instruction: full detail when all five sub-agents enabled, else abbreviated for subset."""
     profile = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MANUFACTURER PROFILE (context only — do NOT use for threat/lane status):
+MANUFACTURER PROFILE (loaded at runtime — do NOT use profile text for threat/lane status):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Company: AutomotiveParts GmbH | Revenue: $180M/year
-Key supplier: SUP-001 SemiTech Asia (Taiwan) — 42% spend, single source for some parts
-Customers: BMW Group ($50K/day penalty), Volkswagen AG ($35K/day penalty)
-Risk appetite: LOW — service level protection is top priority
-Critical item: SEMI-MCU-32 (semiconductor). FIXED: search_disruption_news query "global supply chain disruptions"; suppliers SUP-001, SUP-003; lanes Asia-Europe (Suez/Air), Intra-Europe (Road); regions Taiwan, Vietnam, Poland, Germany.
+Profile data (company name, suppliers, customers, SLA penalties, production lines, risk appetite,
+critical items, shipping lanes, supplier regions) is loaded from the manufacturer profile
+configuration at runtime. Use the supplier IDs, item IDs, lane names, and customer names
+provided there — do not hardcode or assume any of these values.
+
+If you need the manufacturer context, the action_execution_agent can call get_client_context().
+
 RULE: Threat level MUST come from perception_agent tool results only. Inventory/exposure from risk agent results.
 """
     if not enabled:
@@ -120,7 +130,7 @@ Call rate_limit_breather(message="ready"). Do not call any other tool until you 
         steps.append("""
 STEP 1 — PERCEIVE
 Call the perception_agent with a message such as:
-"Run a full disruption scan: (1) search_disruption_news for 'global supply chain disruptions', (2) get_shipping_lane_status for Asia-Europe (Suez), Asia-Europe (Air), Intra-Europe (Road), (3) get_climate_alerts for Taiwan, Vietnam, Poland, Germany, (4) score_supplier_health for SUP-001 and SUP-003. Return a structured summary with threat level (LOW/MEDIUM/HIGH/CRITICAL) and which signals need escalation."
+"Run a full disruption scan: (1) search_disruption_news for 'global supply chain disruptions', (2) get_shipping_lane_status for all active lanes in the manufacturer profile, (3) get_climate_alerts for all supplier regions in the manufacturer profile, (4) score_supplier_health for all key suppliers. Return a structured summary with threat level (LOW/MEDIUM/HIGH/CRITICAL) and which signals need escalation."
 Then call rate_limit_breather(message="next") before the next agent (if any).
 """)
     if "memory" in enabled:
@@ -134,14 +144,14 @@ Then call rate_limit_breather(message="next") before the next agent (if any).
         steps.append("""
 STEP 3 — RISK
 Call the risk_intelligence_agent with a message such as:
-"Assess risk for the current disruption. For affected suppliers (e.g. SUP-001, SUP-003): get disruption probability (30d), get_supplier_exposure, get_inventory_runway for SEMI-MCU-32, calculate_revenue_at_risk, calculate_sla_breach_probability for BMW Group and Volkswagen AG. Return a structured risk assessment."
+"Assess risk for the current disruption. For each affected supplier identified by perception: get disruption probability (30d), get_supplier_exposure, get_inventory_runway for the critical item, calculate_revenue_at_risk, calculate_sla_breach_probability for all key customers. Return a structured risk assessment."
 Then call rate_limit_breather(message="next") before the next agent (if any).
 """)
     if "planning" in enabled:
         steps.append("""
 STEP 4 — PLAN
 Call the scenario_planning_agent with a message such as:
-"Given the risk assessment, simulate mitigation scenarios for SEMI-MCU-32: airfreight, buffer_build, alternate_supplier. Rank scenarios and create_planning_document with the top recommendation."
+"Given the risk assessment, simulate mitigation scenarios for the critical item identified by the risk agent (airfreight, buffer_build, alternate_supplier). Rank scenarios and create_planning_document with the top recommendation."
 Then call rate_limit_breather(message="next") before the next agent (if any).
 """)
     if "action" in enabled:
@@ -160,7 +170,7 @@ Top Recommendation: [name] | Cost: $[X] | Actions: [summary]
 ═══════════════════════════════════════
 """)
     return (
-        "You are an Autonomous Supply Chain Resilience Agent for AutomotiveParts GmbH.\n"
+        "You are an Autonomous Supply Chain Resilience Agent.\n"
         "You have the following specialist agents as tools. Run them in order. "
         "Before ANY sub-agent, call rate_limit_breather(message=\"ready\"). "
         "After EACH sub-agent, call rate_limit_breather(message=\"next\") before the next.\n"
@@ -179,7 +189,7 @@ root_agent = Agent(
     model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview"),
     name="supply_chain_orchestrator",
     description=(
-        "Autonomous Supply Chain Resilience Agent for AutomotiveParts GmbH. "
+        "Autonomous Supply Chain Resilience Agent. "
         "Delegates to perception, memory, risk, planning, and action sub-agents "
         "to monitor disruptions, assess risk, plan mitigation, and execute actions."
     ),

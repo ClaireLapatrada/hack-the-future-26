@@ -37,6 +37,9 @@ class ApprovalEntry(BaseModel):
     adjustment_reason: Optional[str] = None
     # set when executed
     executed_at: Optional[str] = None
+    # guardrail fields (Phase 5)
+    expires_at: Optional[str] = None          # ISO timestamp; PATCH rejects after this
+    approval_count: int = 0                   # for dual-approval enforcement (CRITICAL)
 
 
 class EscalationRecord(BaseModel):

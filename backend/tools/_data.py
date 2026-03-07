@@ -11,17 +11,40 @@ Env overrides:
 
 import json
 import os
+import warnings
 from pathlib import Path
+
+from backend.tools.guardrails import StaleDataWarning, check_data_freshness
 
 _ROOT = Path(__file__).resolve().parent.parent
 _DATA_DIR = _ROOT / "data"
 _CONFIG_DIR = _ROOT / "config"
+
+_STALE_DATA_MAX_AGE_HOURS = float(os.getenv("STALE_DATA_MAX_AGE_HOURS", "48"))
 
 
 def _load_erp() -> dict:
     """Load ERP snapshot. Checks ERP_JSON_PATH env var first, then falls back to data/mock_erp.json."""
     env_path = os.getenv("ERP_JSON_PATH")
     path = Path(env_path) if env_path else _DATA_DIR / "mock_erp.json"
+    if not check_data_freshness(path, max_age_hours=_STALE_DATA_MAX_AGE_HOURS):
+        msg = (
+            f"ERP data at '{path}' is stale (older than {_STALE_DATA_MAX_AGE_HOURS}h) "
+            "or missing. Financial calculations may be based on outdated information."
+        )
+        warnings.warn(msg, StaleDataWarning, stacklevel=2)
+        try:
+            from backend.tools.audit_log import append_audit
+            append_audit({
+                "agent_id": "data_loader",
+                "tool_name": "_load_erp",
+                "arguments": {"path": str(path)},
+                "outcome": "blocked",
+                "error_message": msg,
+                "duration_ms": 0.0,
+            })
+        except Exception:
+            pass
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
@@ -30,6 +53,24 @@ def _load_profile() -> dict:
     """Load manufacturer profile. Checks MANUFACTURER_PROFILE_PATH env var first, then config/manufacturer_profile.json."""
     env_path = os.getenv("MANUFACTURER_PROFILE_PATH")
     path = Path(env_path) if env_path else _CONFIG_DIR / "manufacturer_profile.json"
+    if not check_data_freshness(path, max_age_hours=_STALE_DATA_MAX_AGE_HOURS):
+        msg = (
+            f"Manufacturer profile at '{path}' is stale (older than {_STALE_DATA_MAX_AGE_HOURS}h) "
+            "or missing. Risk/planning calculations may be based on outdated information."
+        )
+        warnings.warn(msg, StaleDataWarning, stacklevel=2)
+        try:
+            from backend.tools.audit_log import append_audit
+            append_audit({
+                "agent_id": "data_loader",
+                "tool_name": "_load_profile",
+                "arguments": {"path": str(path)},
+                "outcome": "blocked",
+                "error_message": msg,
+                "duration_ms": 0.0,
+            })
+        except Exception:
+            pass
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 

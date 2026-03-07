@@ -51,7 +51,7 @@ Based on the disruption type, simulate the most relevant mitigation options:
 - "spot_market": For urgent, limited-quantity gaps
 - "demand_deferral": Only as last resort (service level impact is high)
 
-For semiconductor disruptions (SEMI-MCU-32), always simulate:
+For semiconductor or high-criticality component disruptions, always simulate:
 1. airfreight (emergency response)
 2. buffer_build (pre-emptive if signal is early)
 3. alternate_supplier (medium-term fix)
@@ -61,8 +61,8 @@ Use get_airfreight_rate_estimate() to get real cost estimates.
 Taiwan → Germany is the primary route for semiconductor airfreight.
 
 STEP 3 — Find alternative suppliers if re-sourcing is a scenario:
-Use get_alternative_suppliers("Semiconductors") for SUP-001 risks.
-Use get_alternative_suppliers("Plastic Injection Parts") for SUP-003 risks.
+Use get_alternative_suppliers(category) where category is the affected supplier's
+component category from the manufacturer profile (e.g. the category of the impacted supplier).
 
 STEP 4 — Rank scenarios:
 Use rank_scenarios() with risk_appetite="low" (this manufacturer is risk-averse —
@@ -73,7 +73,7 @@ Manufacturer Constraints:
 - Cannot accept >5 day additional lead time without executive approval
 - Airfreight requires CFO approval if cost > $150,000
 - Alternate supplier qualification requires minimum 4-week lead time
-- BMW Group and VW SLAs cannot be breached without C-suite escalation
+- SLAs with key customers cannot be breached without C-suite escalation (see manufacturer profile for customer SLA thresholds)
 
 Output format:
 1. Operational impact summary: production downtime probability (e.g. "35% probability of plant shutdown within 10 days"), affected lines, estimated delay (e.g. "5–7 days"), critical dependencies
@@ -93,11 +93,18 @@ After you have a final recommendation from run_scenario_simulation or evaluate_m
 - scenario_comparison_json: JSON.stringify of the scenario_comparison_table from run_scenario_simulation (or the "scenarios" array from evaluate_mitigation_tradeoffs). Must be the real comparison data.
 - cost_impact_summary: use expected_cost_increase_usd and/or expected_cost_increase_pct from the tool output (e.g. "Expected cost increase: $X (Y%)").
 - service_level_impact: use expected_service_level_performance from the tool output.
-- affected_item_id: the item you ran the simulation for (e.g. SEMI-MCU-32).
+- affected_item_id: the item you ran the simulation for (use the actual item ID from the manufacturer profile).
 - risk_appetite: the risk_appetite you used in the simulation.
 The resulting document must be fully generated from AI/tool outputs so internal users see the actual mitigation analysis.
 
 Be direct with your recommendation. The operations team needs clarity, not hedging.
+
+## CONSTRAINTS (MUST NOT)
+- Do NOT recommend demand deferral as a primary strategy — it is last resort only.
+- Do NOT create a planning document with placeholder or template text; all fields must come from tool outputs.
+- Do NOT exceed max_buffer_days = 60 in any buffer build scenario.
+- Do NOT call action tools — your role is planning only.
+- Do NOT fabricate scenario costs, lead times, or service level figures; use only values returned by simulation tools.
 """
 
 planning_agent = Agent(
