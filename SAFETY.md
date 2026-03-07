@@ -1,7 +1,6 @@
 # Safety & Guardrails Documentation
 
-Supply Chain Resilience Agent — AutomotiveParts GmbH
-Branch: `guardrails`
+Supply Chain Resilience Agent
 
 ---
 
