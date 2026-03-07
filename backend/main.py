@@ -21,8 +21,10 @@ from backend.routers import (
     approvals,
     dashboard,
     disruptions,
+    email,
     events,
     planning_documents,
+    profile,
     rules,
     scenarios,
 )
@@ -53,8 +55,10 @@ app.include_router(agent_stream.router)
 app.include_router(approvals.router)
 app.include_router(dashboard.router)
 app.include_router(disruptions.router)
+app.include_router(email.router)
 app.include_router(events.router)
 app.include_router(planning_documents.router)
+app.include_router(profile.router)
 app.include_router(rules.router)
 app.include_router(scenarios.router)
 

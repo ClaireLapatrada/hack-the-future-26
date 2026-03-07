@@ -1,4 +1,9 @@
 {
+  "company_info": {
+    "company_name": "AutomotiveParts GmbH",
+    "contact_email": "supply-ops@automotiveparts.de",
+    "sender_name": "Supply Chain Operations Team"
+  },
   "suppliers": [
     {"id": "SUP-001", "name": "SemiTech Asia", "category": "Semiconductors", "country": "Taiwan", "spend_pct": 42, "lead_time_days": 45, "single_source": true, "contract_end": "2025-12-31", "health_score": 72},
     {"id": "SUP-002", "name": "SteelCore Europe", "category": "Steel Components", "country": "Poland", "spend_pct": 28, "lead_time_days": 14, "single_source": false, "contract_end": "2026-06-30", "health_score": 88},

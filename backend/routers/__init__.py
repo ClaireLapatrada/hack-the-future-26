@@ -4,8 +4,10 @@ from backend.routers import (
     approvals,
     dashboard,
     disruptions,
+    email,
     events,
     planning_documents,
+    profile,
     rules,
     scenarios,
 )
@@ -15,8 +17,10 @@ __all__ = [
     "approvals",
     "dashboard",
     "disruptions",
+    "email",
     "events",
     "planning_documents",
+    "profile",
     "rules",
     "scenarios",
 ]
