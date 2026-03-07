@@ -65,22 +65,9 @@ reset_session_budget(session_id=None)      # call at start of each pipeline run
 **Enforcement location:** `backend/tools/action_tools.py` → `execute_approved_restock()`.
 
 **How it works:**
-At execution time, the function recomputes `suggested_quantity × unit_cost` using a hardcoded unit cost table and compares it to the `estimated_cost_usd` stored in the approval record. If they differ by more than 20%, the execution is blocked.
-
-```
-unit_cost_map = {
-    "SEMI-MCU-32":   $12.50/unit
-    "SEMI-SENSOR-01": $8.00/unit
-    "STEEL-BRK-07":  $17.00/unit
-    "STEEL-FRAME-02": $22.00/unit
-    default:          $12.00/unit
-}
-tolerance = 20%
-```
+At execution time, the function recomputes `suggested_quantity × unit_cost` using a reference unit cost table and compares it to the `estimated_cost_usd` stored in the approval record. If they differ by more than 20%, the execution is blocked.
 
 **What happens on trigger:** Returns `{"status": "error", "message": "G2 coherence check failed: ..."}`. Logs to audit trail. No PO is created.
-
-**Maintenance:** Update `unit_cost_map` in `action_tools.py` when supplier pricing changes. A 20% tolerance accounts for minor ERP pricing differences.
 
 ---
 
@@ -326,7 +313,7 @@ execute_approved_restock(approval_id)
 
 **Dual approval for CRITICAL:** When `rules.dualApprovalCritical = true`, CRITICAL-severity approvals require two separate PATCH approve calls. The first increments `approval_count` and returns `status=pending_second_approval`. The second finalises to `status=approved`.
 
-**ERP auto-execute path removed:** `flag_erp_reorder_adjustment` previously accepted `auto_execute=True` which bypassed the approval queue. This parameter has been removed. All ERP adjustments are created with `status=PENDING_APPROVAL`. Only `execute_approved_restock()` can create an `EXECUTED` ERP record, and only after all checks pass.
+All ERP adjustments are created with `status=PENDING_APPROVAL`. Only `execute_approved_restock()` can create an `EXECUTED` ERP record, and only after all checks pass.
 
 ---
 
@@ -368,7 +355,6 @@ Each agent's system prompt contains a `## CONSTRAINTS (MUST NOT)` section. These
 - Do NOT call `execute_approved_restock` unless `status="approved"` from a human
 - Do NOT commit spend > $100,000 without an approved escalation record
 - Do NOT call tools belonging to other agents
-- Do NOT set `auto_execute=True` on ERP adjustments
 
 ---
 
@@ -445,5 +431,4 @@ python -m pytest backend/tests/test_guardrails.py -v
 | G5 rate limiting is in-memory; resets on server restart and does not work across multiple workers | Acceptable for single-process dev deployment | Redis-backed rate limiting (e.g. `slowapi` + Redis) |
 | No authentication on the API | Internal tool; intended for controlled environments | JWT/API key middleware |
 | Dual approval for CRITICAL requires two calls from the same unauthenticated client | Enforces the concept without auth; two clicks from the UI operator | Distinct approver identity via session auth |
-| `auto_execute` removal from `flag_erp_reorder_adjustment` makes all ERP flags pending — no self-executing ERP path remains | Intended — all ERP changes now need human approval | Configure fast-track approval for low-value items via rules |
 | Stale data guard emits a warning but does not block execution | Allows pipeline to continue with a degraded-confidence result | Configurable hard-block mode via `STALE_DATA_HARD_BLOCK=true` |
